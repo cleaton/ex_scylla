@@ -28,7 +28,7 @@ defmodule ExScylla.MixProject do
   defp package() do
     [
       # These are the default files included in the package
-      files: ~w(lib priv .formatter.exs mix.exs README*
+      files: ~w(lib priv/native/.place_holder .formatter.exs mix.exs README*
                 native/ex_scylla/src native/ex_scylla/Cargo.*),
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/cleaton/ex_scylla"}
