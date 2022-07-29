@@ -40,6 +40,7 @@ defmodule ExScylla.MixProject do
     [
       {:rustler, "~> 0.24"},
       {:lcov_ex, "~> 0.2", only: [:test], runtime: false},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
 end
