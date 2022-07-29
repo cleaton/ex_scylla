@@ -1,4 +1,4 @@
-# ExScyllaDriver
+# ExScylla
 
 * Minimal interface & abstraction
 * * Easy to maintain & to add new features as they arrive in the rust driver
