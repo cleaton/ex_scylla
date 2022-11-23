@@ -149,7 +149,7 @@ pub struct ScyllaQueryResult {
     pub warnings: Vec<String>,
     pub tracing_id: Option<ScyllaBinary>,
     pub paging_state: Option<ScyllaBinary>,
-    pub col_specs: Vec<ScyllaColumnSpec>,
+    pub col_specs: Option<Vec<ScyllaColumnSpec>>,
 }
 
 to_elixir!(QueryResult, ScyllaQueryResult, |qr: QueryResult| {
@@ -160,7 +160,7 @@ to_elixir!(QueryResult, ScyllaQueryResult, |qr: QueryResult| {
         warnings: qr.warnings,
         tracing_id: qr.tracing_id.map(|b| b.into()),
         paging_state: qr.paging_state.map(|b| b.into()),
-        col_specs: qr.col_specs.into_iter().map(|x| x.ex()).collect(),
+        col_specs: Some(qr.col_specs.into_iter().map(|x| x.ex()).collect()),
     }
 });
 

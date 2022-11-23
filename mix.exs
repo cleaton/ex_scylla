@@ -40,7 +40,9 @@ defmodule ExScylla.MixProject do
     [
       {:rustler, "~> 0.24"},
       {:lcov_ex, "~> 0.2", only: [:test], runtime: false},
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:benchee, "~> 1.0", only: [:bench]},
+      {:erlcass, "~> 4.0", only: [:bench]}
     ]
   end
 end

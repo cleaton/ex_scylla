@@ -3,7 +3,9 @@ alias ExScylla.SessionBuilder
 
 {:ok, session} = SessionBuilder.new()
                   |> SessionBuilder.known_node("127.0.0.1:9042")
+                  |> SessionBuilder.use_keyspace()
                   |> SessionBuilder.build()
+Session.
 ks1 = """
   CREATE KEYSPACE IF NOT EXISTS test
   WITH REPLICATION = {
