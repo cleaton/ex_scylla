@@ -1,6 +1,5 @@
 defmodule ExScylla.Session do
   alias ExScylla.Types, as: T
-  alias ExScylla.Types.BatchResult
   alias ExScylla.Types.QueryResult
   alias ExScylla.Types.Errors.QueryError
   use ExScylla.Macros.Native, [
@@ -39,7 +38,7 @@ defmodule ExScylla.Session do
   native_f_async func: :batch,
                  args: [session, batch, values],
                  args_spec: [T.session(), T.batch(), T.values()],
-                 return_spec: {:ok, BatchResult.t()} | {:error, QueryError.t()},
+                 return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
                  example_setup: :session_setup,
                  doc_example: """
                  iex> batch = Batch.new(:unlogged)
@@ -47,7 +46,7 @@ defmodule ExScylla.Session do
                  iex> values = [
                  ...>   [{:text, "test"}, {:int, 2}, {:double, 1.0}]
                  ...> ]
-                 iex> {:ok, %BatchResult{}} = Session.batch(session, batch, values)
+                 iex> {:ok, %QueryResult{}} = Session.batch(session, batch, values)
                  """
 
   native_f_async func: :check_schema_agreement,

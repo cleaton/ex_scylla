@@ -23,6 +23,7 @@ pub enum ScyllaQueryError {
     TimeoutError(String),
     TooManyOrphanedStreamIds(String),
     UnableToAllocStreamId(String),
+    RequestTimeout(String),
 }
 to_elixir!(QueryError, ScyllaQueryError, |qe: QueryError| {
     match qe {
@@ -37,7 +38,8 @@ to_elixir!(QueryError, ScyllaQueryError, |qe: QueryError| {
         }
         QueryError::UnableToAllocStreamId => {
             ScyllaQueryError::UnableToAllocStreamId(qe.to_string())
-        }
+        },
+        QueryError::RequestTimeout(msg) => ScyllaQueryError::RequestTimeout(msg)
     }
 });
 
@@ -62,6 +64,7 @@ pub enum ScyllaDbError {
     Unprepared(String),
     ServerError(String),
     ProtocolError(String),
+    RateLimitReached(String),
     Other(String),
 }
 to_elixir!(DbError, ScyllaDbError, |dbe: DbError| {
@@ -85,6 +88,7 @@ to_elixir!(DbError, ScyllaDbError, |dbe: DbError| {
         DbError::Unprepared { .. } => ScyllaDbError::Unprepared(msg),
         DbError::ServerError => ScyllaDbError::ServerError(msg),
         DbError::ProtocolError => ScyllaDbError::ProtocolError(msg),
+        DbError::RateLimitReached { .. } => ScyllaDbError::RateLimitReached(msg),
         DbError::Other(_) => ScyllaDbError::Other(msg),
     }
 });
@@ -96,6 +100,7 @@ pub enum ScyllaBadQuery {
     ValueLenMismatch(String),
     ValuesTooLongForKey(String),
     BadKeyspaceName(ScyllaBadKeyspaceName),
+    Other(String)
 }
 
 to_elixir!(BadQuery, ScyllaBadQuery, |bq| {
@@ -104,6 +109,7 @@ to_elixir!(BadQuery, ScyllaBadQuery, |bq| {
         BadQuery::ValueLenMismatch(_, _) => ScyllaBadQuery::ValueLenMismatch(bq.to_string()),
         BadQuery::ValuesTooLongForKey(_, _) => ScyllaBadQuery::ValuesTooLongForKey(bq.to_string()),
         BadQuery::BadKeyspaceName(bkn) => ScyllaBadQuery::BadKeyspaceName(bkn.ex()),
+        BadQuery::Other(msg) => ScyllaBadQuery::Other(msg),
     }
 });
 
@@ -143,6 +149,7 @@ pub enum ScyllaNewSessionError {
     TimeoutError(String),
     TooManyOrphanedStreamIds(String),
     UnableToAllocStreamId(String),
+    RequestTimeout(String),
 }
 to_elixir!(NewSessionError, ScyllaNewSessionError, |nse| {
     match nse {
@@ -166,6 +173,7 @@ to_elixir!(NewSessionError, ScyllaNewSessionError, |nse| {
         NewSessionError::UnableToAllocStreamId => {
             ScyllaNewSessionError::UnableToAllocStreamId(nse.to_string())
         }
+        NewSessionError::RequestTimeout(msg) => ScyllaNewSessionError::RequestTimeout(msg)
     }
 });
 #[derive(NifTaggedEnum, Debug)]

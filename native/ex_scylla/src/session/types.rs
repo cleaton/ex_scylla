@@ -17,7 +17,7 @@ use scylla::frame::value::Counter;
 use scylla::frame::value::CqlDuration;
 use scylla::query::Query;
 use scylla::Session;
-use scylla::{BatchResult, QueryResult};
+use scylla::QueryResult;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::io::Write;
@@ -161,20 +161,6 @@ to_elixir!(QueryResult, ScyllaQueryResult, |qr: QueryResult| {
         tracing_id: qr.tracing_id.map(|b| b.into()),
         paging_state: qr.paging_state.map(|b| b.into()),
         col_specs: Some(qr.col_specs.into_iter().map(|x| x.ex()).collect()),
-    }
-});
-
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.BatchResult"]
-pub struct ScyllaBatchResult {
-    pub warnings: Vec<String>,
-    pub tracing_id: Option<ScyllaBinary>,
-}
-
-to_elixir!(BatchResult, ScyllaBatchResult, |br: BatchResult| {
-    ScyllaBatchResult {
-        warnings: br.warnings,
-        tracing_id: br.tracing_id.map(|b| b.into()),
     }
 });
 
