@@ -6,14 +6,12 @@ pub mod types;
 use crate::batch::types::BatchResource;
 use crate::prepared_statement::types::*;
 use crate::utils::*;
-use crate::consts;
 use rustler::env::{OwnedEnv, SavedTerm};
 use rustler::types::atom;
 use rustler::{Atom, Encoder, Env, Error, NifResult, ResourceArc, Term};
 use scylla::frame::response::result::CqlValue;
 use scylla::statement::batch::Batch;
 use scylla::Session;
-use tokio::time::Instant;
 use types::*;
 
 #[rustler::nif]
@@ -92,39 +90,15 @@ fn s_execute<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     prepared: ResourceArc<PreparedStatementResource>,
-    values: Vec<(Term<'a>, Term<'a>)>,
+    values: Vec<ScyllaValue>,
 ) -> NifResult<Atom> {
-        let (_, key) = values.first().unwrap();
-        let str: String = key.decode().unwrap();
-
-        let pid = env.pid();
-        let mut owned_env = OwnedEnv::new();
-        //let opaque = owned_env
-        //    .run(|env| -> NifResult<SavedTerm> { Ok(owned_env.save(opaque.in_env(env))) })?;
-        runtime::rt().spawn(async move {
-            
-            let session: &Session = &session.0;
-            //let values = &vec![String::from("hello")];
-            let start = Instant::now();
-            let _res = session.execute(&prepared.0, (str,)).await;
-            let duration = start.elapsed();
-            //println!("Time elapsed in execute rust is: {:?}", duration);
-            let res = (atom::ok(), atom::ok());
-            owned_env.send_and_clear(&pid, |env| ((consts::execute(), atom::ok()), res).encode(env));
-            let duration = start.elapsed();
-            //println!("Time elapsed in execute rust is 2: {:?}", duration);
-        });
+    let values = values.r()?;
+    async_elixir!(env, opaque, {
+        let session: &Session = &session.0;
+        let res = session.execute(&prepared.0, values).await;
+        res.ex()
+    });
     Ok(atom::ok())
-
-
-
-    //let values = values.r()?;
-    //async_elixir!(env, opaque, {
-    //    let session: &Session = &session.0;
-    //    let res = session.execute(&prepared.0, values).await;
-    //    res.ex()
-    //});
-    //Ok(atom::ok())
 }
 
 //s_execute_iter(_session, _prepared, _values), do: e()
