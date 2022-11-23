@@ -5,6 +5,23 @@ args = Enum.map(1..100, fn i -> "hello#{i}" end)
 keyspace = "load_test_erlcass"
 Application.ensure_all_started(:erlcass)
 #### SETUP
+#CREATE TABLE IF NOT EXISTS load_test_erlcass.test_table(
+#col1 ascii,
+#col2 bigint,
+#col3 blob,
+#col4 boolean,
+#col5 decimal,
+#col6 double,
+#col7 float,
+#col8 int,
+#col9 timestamp,
+#col10 uuid,
+#col11 varchar,
+#col12 varint,
+#col13 timeuuid,
+#col14 inet,
+#PRIMARY KEY (col1)
+#);
 insert_query = "INSERT INTO #{keyspace}.test_table(col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, col13, col14) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 :ok = :erlcass.add_prepare_statement(:add_load_test_record, insert_query)
 
