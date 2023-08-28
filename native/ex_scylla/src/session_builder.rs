@@ -71,16 +71,17 @@ fn sb_connection_timeout(
     sbr
 }
 
-#[rustler::nif]
-fn sb_default_consistency(
-    sbr: ResourceArc<SessionBuilderResource>,
-    consistency: ScyllaConsistency,
-) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| {
-        sb.default_consistency(consistency.into())
-    });
-    sbr
-}
+// TODO: consistency can be configured via execution profile
+// #[rustler::nif]
+// fn sb_default_consistency(
+//     sbr: ResourceArc<SessionBuilderResource>,
+//     consistency: ScyllaConsistency,
+// ) -> ResourceArc<SessionBuilderResource> {
+//     use_builder!(sbr, |sb: SessionBuilder| {
+//         sb.default_consistency(consistency.into())
+//     });
+//     sbr
+// }
 #[rustler::nif]
 fn sb_disallow_shard_aware_port(
     sbr: ResourceArc<SessionBuilderResource>,
@@ -156,14 +157,15 @@ fn sb_known_nodes_addr(
     sbr
 }
 
-#[rustler::nif]
-fn sb_load_balancing(
-    sbr: ResourceArc<SessionBuilderResource>,
-    policy: ScyllaLoadBalancingPolicy,
-) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| { sb.load_balancing(policy.r()) });
-    sbr
-}
+// TODO: load_balancing_policy can be configured via execution profile
+// #[rustler::nif]
+// fn sb_load_balancing(
+//     sbr: ResourceArc<SessionBuilderResource>,
+//     policy: ScyllaLoadBalancingPolicy,
+// ) -> ResourceArc<SessionBuilderResource> {
+//     use_builder!(sbr, |sb: SessionBuilder| { sb.load_balancing(policy.r()) });
+//     sbr
+// }
 #[rustler::nif]
 fn sb_new() -> ResourceArc<SessionBuilderResource> {
     ResourceArc::new(SessionBuilderResource(Mutex::new(Cell::new(
@@ -186,16 +188,17 @@ fn sb_pool_size(
     sbr
 }
 
-#[rustler::nif]
-fn sb_retry_policy(
-    sbr: ResourceArc<SessionBuilderResource>,
-    retry_policy: ScyllaRetryPolicy,
-) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| {
-        sb.retry_policy(retry_policy.r())
-    });
-    sbr
-}
+// TODO: retry policy will be done via execution profile
+// #[rustler::nif]
+// fn sb_retry_policy(
+//     sbr: ResourceArc<SessionBuilderResource>,
+//     retry_policy: ScyllaRetryPolicy,
+// ) -> ResourceArc<SessionBuilderResource> {
+//     use_builder!(sbr, |sb: SessionBuilder| {
+//         sb.retry_policy(retry_policy.r())
+//     });
+//     sbr
+// }
 
 #[rustler::nif]
 fn sb_schema_agreement_interval(
@@ -208,16 +211,17 @@ fn sb_schema_agreement_interval(
     sbr
 }
 
-#[rustler::nif]
-fn sb_speculative_execution(
-    sbr: ResourceArc<SessionBuilderResource>,
-    policy: ScyllaSpeculativeExecutionPolicy,
-) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| {
-        sb.speculative_execution(policy.r())
-    });
-    sbr
-}
+// TODO: speculative_execution_policy can be configured via execution profile
+// #[rustler::nif]
+// fn sb_speculative_execution(
+//     sbr: ResourceArc<SessionBuilderResource>,
+//     policy: ScyllaSpeculativeExecutionPolicy,
+// ) -> ResourceArc<SessionBuilderResource> {
+//     use_builder!(sbr, |sb: SessionBuilder| {
+//         sb.speculative_execution(policy.r())
+//     });
+//     sbr
+// }
 
 #[rustler::nif]
 fn sb_tcp_nodelay(

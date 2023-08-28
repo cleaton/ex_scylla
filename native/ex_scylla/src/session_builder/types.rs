@@ -1,8 +1,6 @@
 use rustler::NifTaggedEnum;
 use rustler::{NifStruct, NifUnitEnum, NifUntaggedEnum};
-use scylla::load_balancing::{
-    DcAwareRoundRobinPolicy, LoadBalancingPolicy, RoundRobinPolicy, TokenAwarePolicy,
-};
+use scylla::load_balancing::LoadBalancingPolicy;
 use scylla::retry_policy::{DefaultRetryPolicy, FallthroughRetryPolicy, RetryPolicy};
 use scylla::speculative_execution::{
     PercentileSpeculativeExecutionPolicy, SimpleSpeculativeExecutionPolicy,
@@ -124,42 +122,42 @@ impl ToRust<Arc<dyn SpeculativeExecutionPolicy>> for ScyllaSpeculativeExecutionP
     }
 }
 
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.DcAwareRoundRobinPolicy"]
-pub struct ScyllaDcAwareRoundRobinPolicy {
-    local_dc: String,
-    token_aware: bool,
-}
-
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.RoundRobinPolicy"]
-pub struct ScyllaRoundRobinPolicy {
-    token_aware: bool,
-}
+// #[derive(NifStruct, Debug)]
+// #[module = "ExScylla.Types.DcAwareRoundRobinPolicy"]
+// pub struct ScyllaDcAwareRoundRobinPolicy {
+//     local_dc: String,
+//     token_aware: bool,
+// }
+//
+// #[derive(NifStruct, Debug)]
+// #[module = "ExScylla.Types.RoundRobinPolicy"]
+// pub struct ScyllaRoundRobinPolicy {
+//     token_aware: bool,
+// }
 
 #[derive(NifUntaggedEnum)]
 pub enum ScyllaLoadBalancingPolicy {
-    DcAwareRoundRobin(ScyllaDcAwareRoundRobinPolicy),
-    RoundRobin(ScyllaRoundRobinPolicy),
+//     DcAwareRoundRobin(ScyllaDcAwareRoundRobinPolicy),
+//     RoundRobin(ScyllaRoundRobinPolicy),
 }
 
 impl ToRust<Arc<dyn LoadBalancingPolicy>> for ScyllaLoadBalancingPolicy {
     fn r(self) -> Arc<dyn LoadBalancingPolicy> {
         match self {
-            Self::DcAwareRoundRobin(dwrr) => {
-                let p = DcAwareRoundRobinPolicy::new(dwrr.local_dc);
-                match dwrr.token_aware {
-                    true => Arc::new(TokenAwarePolicy::new(Box::new(p))),
-                    false => Arc::new(p),
-                }
-            }
-            Self::RoundRobin(rr) => {
-                let p = RoundRobinPolicy::new();
-                match rr.token_aware {
-                    true => Arc::new(TokenAwarePolicy::new(Box::new(p))),
-                    false => Arc::new(p),
-                }
-            }
+            // Self::DcAwareRoundRobin(dwrr) => {
+            //     let p = DcAwareRoundRobinPolicy::new(dwrr.local_dc);
+            //     match dwrr.token_aware {
+            //         true => Arc::new(TokenAwarePolicy::new(Box::new(p))),
+            //         false => Arc::new(p),
+            //     }
+            // }
+            // Self::RoundRobin(rr) => {
+            //     let p = RoundRobinPolicy::new();
+            //     match rr.token_aware {
+            //         true => Arc::new(TokenAwarePolicy::new(Box::new(p))),
+            //         false => Arc::new(p),
+            //     }
+            // }
         }
     }
 }

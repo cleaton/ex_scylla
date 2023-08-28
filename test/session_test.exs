@@ -10,19 +10,21 @@ defmodule SessionTest do
   doctest Session
 
   setup_all do
-    {:ok, session} = SessionBuilder.new()
-                     |> SessionBuilder.known_node("127.0.0.1:9042")
-                     |> SessionBuilder.build()
+    {:ok, session} =
+      SessionBuilder.new()
+      |> SessionBuilder.known_node("127.0.0.1:9042")
+      |> SessionBuilder.build()
+
     t = """
-        CREATE TABLE IF NOT EXISTS test.s_doc(
-          a TEXT,
-          b INT,
-          c DOUBLE,
-          PRIMARY KEY (a, b)
-        );
-        """
+    CREATE TABLE IF NOT EXISTS test.s_doc(
+      a TEXT,
+      b INT,
+      c DOUBLE,
+      PRIMARY KEY (a, b)
+    );
+    """
+
     {:ok, _} = Session.query(session, t, [])
     :ok
   end
-
 end

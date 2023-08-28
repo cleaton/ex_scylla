@@ -67,9 +67,12 @@ defmodule ExScylla.Macros.Native do
     return_spec_str = Macro.to_string(return_spec)
     # doc_text = Keyword.get(macro_args, :doc_text, "")
     doc_example = Keyword.get(macro_args, :doc_example, "")
-    example_setup = if Keyword.get(macro_args, :example_setup) do
-      Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup)) |> String.trim_trailing("\n")
-    end
+
+    example_setup =
+      if Keyword.get(macro_args, :example_setup) do
+        Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup))
+        |> String.trim_trailing("\n")
+      end
 
     doc_example =
       if doc_example != "" do
@@ -118,9 +121,13 @@ defmodule ExScylla.Macros.Native do
       end
 
     doc_example = Keyword.get(macro_args, :doc_example, "")
-    example_setup = if Keyword.get(macro_args, :example_setup) do
-      Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup)) |> String.trim_trailing("\n")
-    end
+
+    example_setup =
+      if Keyword.get(macro_args, :example_setup) do
+        Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup))
+        |> String.trim_trailing("\n")
+      end
+
     prefix = Module.get_attribute(__CALLER__.module, :prefix)
     docs_rs_url = Module.get_attribute(__CALLER__.module, :docs_rs_url)
 
