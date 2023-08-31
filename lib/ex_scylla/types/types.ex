@@ -1,6 +1,4 @@
 defmodule ExScylla.Types do
-  alias ExScylla.Types.RoundRobinPolicy
-  alias ExScylla.Types.DcAwareRoundRobinPolicy
   alias ExScylla.Types.SimpleSpeculativeExecutionPolicy
   alias ExScylla.Types.PercentileSpeculativeExecutionPolicy
   alias ExScylla.Types.CqlDuration
@@ -15,10 +13,14 @@ defmodule ExScylla.Types do
   @type consistency ::
           :any | :one | :two | :three | :quorum | :all | :local_quorum | :each_quorum | :local_one
   @type session_builder :: reference()
+  @type execution_profile_builder :: reference()
+  @type execution_profile_handle :: reference()
   @type transport_compression :: :lz4 | :snappy
-  @type load_balancing_policy :: RoundRobinPolicy.t() | DcAwareRoundRobinPolicy.t()
   @type pool_size :: {:per_host, pos_integer()} | {:per_shard, pos_integer()}
-  @type retry_policy :: :default_retry_policy | :fall_through_retry_policy
+  @type retry_policy ::
+          :default_retry_policy
+          | :fall_through_retry_policy
+          | :downgrading_consistency_retry_policy
   @type speculative_execution_policy ::
           SimpleSpeculativeExecutionPolicy.t() | PercentileSpeculativeExecutionPolicy.t()
   @type serial_consistency :: :serial | :local_serial

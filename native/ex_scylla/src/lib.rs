@@ -8,6 +8,8 @@ mod session;
 mod session_builder;
 pub mod types;
 pub mod utils;
+mod execution_profile;
+
 use std::option::Option::Some;
 
 // Setup
@@ -22,6 +24,7 @@ rustler::init!(
         session_builder::sb_disallow_shard_aware_port,
         session_builder::sb_fetch_schema_metadata,
         session_builder::sb_keepalive_interval,
+        session_builder::sb_keepalive_timeout,
         session_builder::sb_known_node,
         session_builder::sb_known_node_addr,
         session_builder::sb_known_nodes,
@@ -33,6 +36,8 @@ rustler::init!(
         session_builder::sb_tcp_nodelay,
         session_builder::sb_use_keyspace,
         session_builder::sb_user,
+        session_builder::sb_default_execution_profile_handle,
+
         // Session
         session::s_await_schema_agreement,
         session::s_await_timed_schema_agreement,
@@ -52,6 +57,7 @@ rustler::init!(
         session::s_query_paged,
         session::s_refresh_metadata,
         session::s_use_keyspace,
+
         //Query
         query::q_disable_paging,
         query::q_get_consistency,
@@ -70,6 +76,7 @@ rustler::init!(
         query::q_set_timestamp,
         query::q_set_tracing,
         query::q_with_page_size,
+
         //Batch
         batch::b_append_statement,
         batch::b_get_consistency,
@@ -87,6 +94,7 @@ rustler::init!(
         batch::b_set_serial_consistency,
         batch::b_set_timestamp,
         batch::b_set_tracing,
+
         //PreparedStatement
         prepared_statement::ps_compute_partition_key,
         prepared_statement::ps_disable_paging,
@@ -111,6 +119,17 @@ rustler::init!(
         prepared_statement::ps_set_serial_consistency,
         prepared_statement::ps_set_timestamp,
         prepared_statement::ps_set_tracing,
+
+        //ExecutionProfile
+        execution_profile::ep_builder,
+        execution_profile::ep_request_timeout,
+        execution_profile::ep_consistency,
+        execution_profile::ep_serial_consistency,
+        execution_profile::ep_load_balancing_policy,
+        execution_profile::ep_retry_policy,
+        execution_profile::ep_speculative_execution_policy,
+        execution_profile::ep_build,
+        execution_profile::ep_into_handle,
     ],
     load = load
 );
@@ -118,6 +137,9 @@ rustler::init!(
 fn load(env: rustler::Env, _: rustler::Term) -> bool {
     runtime::init();
     rustler::resource!(session_builder::types::SessionBuilderResource, env);
+    rustler::resource!(execution_profile::types::ExecutionProfileBuilderResource, env);
+    rustler::resource!(execution_profile::types::ExecutionProfileHandleResource, env);
+    rustler::resource!(execution_profile::types::ExecutionProfileResource, env);
     rustler::resource!(session::types::SessionResource, env);
     rustler::resource!(batch::types::BatchResource, env);
     rustler::resource!(prepared_statement::types::PreparedStatementResource, env);

@@ -27,6 +27,9 @@ defmodule ExScylla.Native do
   def sb_tcp_nodelay(_sbr, _nodelay), do: e()
   def sb_use_keyspace(_sbr, _keyspace_name, _case_sensitive), do: e()
   def sb_user(_sbr, _username, _passwd), do: e()
+  def sb_default_execution_profile_handle(_sbr, _handle), do: e()
+  def sb_keepalive_timeout(_sbr, _timeout_ms), do: e()
+
   # Session
   def s_await_schema_agreement(_opaque, _session), do: e()
   def s_await_timed_schema_agreement(_opaque, _session, _timeout_ms), do: e()
@@ -46,6 +49,7 @@ defmodule ExScylla.Native do
   def s_query_paged(_opaque, _session, _query, _values, _paging_state), do: e()
   def s_refresh_metadata(_opaque, _session), do: e()
   def s_use_keyspace(_opaque, _session, _keyspace_name, _case_sensitive), do: e()
+
   # Query
   def q_disable_paging(_q), do: e()
   def q_get_consistency(_q), do: e()
@@ -64,6 +68,7 @@ defmodule ExScylla.Native do
   def q_set_timestamp(_q, _timestamp), do: e()
   def q_set_tracing(_q, _should_trace), do: e()
   def q_with_page_size(_q, _page_size), do: e()
+
   # Batch
   def b_append_statement(_batch, _statement), do: e()
   def b_get_consistency(_batch), do: e()
@@ -81,6 +86,7 @@ defmodule ExScylla.Native do
   def b_set_serial_consistency(_batch, _sc), do: e()
   def b_set_timestamp(_batch, _timestamp_micros), do: e()
   def b_set_tracing(_batch, _should_trace), do: e()
+
   # PreparedStatement
   def ps_compute_partition_key(_ps, _bound_values), do: e()
   def ps_disable_paging(_ps), do: e()
@@ -105,6 +111,29 @@ defmodule ExScylla.Native do
   def ps_set_serial_consistency(_ps, _sc), do: e()
   def ps_set_timestamp(_ps, _timestamp_micros), do: e()
   def ps_set_tracing(_ps, _should_trace), do: e()
+
+  # ExecutionProfile
+  def ep_builder(), do: e()
+  def ep_request_timeout(_ep, _timeout_ms), do: e()
+  def ep_consistency(_ep, _consistency), do: e()
+  def ep_serial_consistency(_ep, _serial_consistency), do: e()
+  def ep_load_balancing_policy(_ep, _lb_policy), do: e()
+  def ep_retry_policy(_ep, _retry_policy), do: e()
+  def ep_speculative_execution_policy(_ep, _speculative_execution_policy), do: e()
+  def ep_build(_ep), do: e()
+  def ep_into_handle(_ep), do: e()
+
+  # # LoadBalancingPolicy
+  # def lbp_builder(), do: e()
+  # def lbp_prefer_datacenter(_lbp, _dc), do: e()
+  # def lbp_prefer_rack(_lbp, _rack), do: e()
+  # # TODO: boolean flags should have ? at end
+  # def lbp_token_aware(_lbp, _token_aware), do: e()
+  # def lbp_permit_dc_failover(_lbp, _permit), do: e()
+  # def lbp_enable_shuffling_replicas(_lbp, _enable), do: e()
+  # # TODO LatencyAwarenessBuilder
+  # # def lbp_latency_awareness(_lbp, _latency_awareness_builder), do: e()
+  # def lbp_build(_lbp), do: e()
 
   # helpers
   defp e(), do: :erlang.nif_error(:nif_not_loaded)

@@ -57,18 +57,6 @@ defmodule ExScylla.SessionBuilder do
   )
 
   native_f(
-    func: :default_consistency,
-    args: [sb, consistency],
-    args_spec: [T.session_builder(), T.consistency()],
-    return_spec: T.session_builder(),
-    doc_example: """
-    iex> sb = SessionBuilder.new()
-    iex> sb = SessionBuilder.default_consistency(sb, :quorum)
-    iex> true = is_reference(sb)
-    """
-  )
-
-  native_f(
     func: :disallow_shard_aware_port,
     args: [sb, disallow],
     args_spec: [T.session_builder(), boolean()],
@@ -101,6 +89,16 @@ defmodule ExScylla.SessionBuilder do
     iex> sb = SessionBuilder.new()
     iex> sb = SessionBuilder.keepalive_interval(sb, 5_000)
     iex> true = is_reference(sb)
+    """
+  )
+
+  native_f(
+    func: :keepalive_timeout,
+    args: [sb, timeout_ms],
+    args_spec: [T.session_builder(), pos_integer()],
+    return_spec: T.session_builder(),
+    doc_example: """
+    TODO
     """
   )
 
@@ -153,19 +151,6 @@ defmodule ExScylla.SessionBuilder do
   )
 
   native_f(
-    func: :load_balancing,
-    args: [sb, policy],
-    args_spec: [T.session_builder(), T.load_balancing_policy()],
-    return_spec: T.session_builder(),
-    doc_example: """
-    iex> sb = SessionBuilder.new()
-    iex> policy = %RoundRobinPolicy{token_aware: true}
-    iex> sb = SessionBuilder.load_balancing(sb, policy)
-    iex> true = is_reference(sb)
-    """
-  )
-
-  native_f(
     func: :new,
     args: [],
     args_spec: [],
@@ -202,18 +187,6 @@ defmodule ExScylla.SessionBuilder do
   )
 
   native_f(
-    func: :retry_policy,
-    args: [sb, retry_policy],
-    args_spec: [T.session_builder(), T.retry_policy()],
-    return_spec: T.session_builder(),
-    doc_example: """
-    iex> sb = SessionBuilder.new()
-    iex> sb = SessionBuilder.retry_policy(sb, :default_retry_policy)
-    iex> true = is_reference(sb)
-    """
-  )
-
-  native_f(
     func: :schema_agreement_interval,
     args: [sb, interval_ms],
     args_spec: [T.session_builder(), pos_integer()],
@@ -222,19 +195,6 @@ defmodule ExScylla.SessionBuilder do
     iex> sb = SessionBuilder.new()
     iex> interval_ms = 5_000
     iex> sb = SessionBuilder.schema_agreement_interval(sb, interval_ms)
-    iex> true = is_reference(sb)
-    """
-  )
-
-  native_f(
-    func: :speculative_execution,
-    args: [sb, policy],
-    args_spec: [T.session_builder(), T.speculative_execution_policy()],
-    return_spec: T.session_builder(),
-    doc_example: """
-    iex> sb = SessionBuilder.new()
-    iex> se = %SimpleSpeculativeExecutionPolicy{max_retry_count: 10, retry_interval_ms: 5_000}
-    iex> sb = SessionBuilder.speculative_execution(sb, se)
     iex> true = is_reference(sb)
     """
   )
@@ -264,6 +224,7 @@ defmodule ExScylla.SessionBuilder do
     """
   )
 
+  # TODO: check that creds still work like this
   native_f(
     func: :user,
     args: [sb, username, passwd],
@@ -274,6 +235,16 @@ defmodule ExScylla.SessionBuilder do
     iex> {username, passwd} = {"user", "myS3cr3tp@ssw0rd"}
     iex> sb = SessionBuilder.user(sb, username, passwd)
     iex> true = is_reference(sb)
+    """
+  )
+
+  native_f(
+    func: :default_execution_profile_handle,
+    args: [sb, handle],
+    args_spec: [T.session_builder(), T.execution_profile_handle()],
+    return_spec: T.session_builder(),
+    doc_example: """
+    TODO
     """
   )
 end
