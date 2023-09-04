@@ -56,7 +56,6 @@ defmodule ExScylla.ExecutionProfile do
     """
   )
 
-  # TODO implement
   native_f(
     func: :load_balancing_policy,
     args: [ep, lb_policy],

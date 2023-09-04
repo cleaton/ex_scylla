@@ -44,7 +44,6 @@ fn ep_consistency(
 ) -> ResourceArc<ExecutionProfileBuilderResource> {
     let mut epb = epbr.0.to_owned();
     // print the consistency
-    println!("consistency: {:?}", consistency);
     epb = epb.consistency(consistency.into());
     epb.ex()
 }
@@ -119,16 +118,10 @@ pub struct ScyllaLoadBalancingPolicy {
 impl ToRust<Arc<dyn LoadBalancingPolicy>> for ScyllaLoadBalancingPolicy {
     fn r(self) -> Arc<dyn LoadBalancingPolicy> {
         let mut lbpb = DefaultPolicy::builder();
-        // print datacenter
-        println!("datacenter: {:?}", self.datacenter);
         lbpb = lbpb.prefer_datacenter(self.datacenter);
-        println!("rack: {:?}", self.rack);
         lbpb = lbpb.prefer_rack(self.rack);
-        println!("is_token_aware: {:?}", self.is_token_aware);
         lbpb = lbpb.token_aware(self.is_token_aware);
-        println!("permit_dc_failover: {:?}", self.permit_dc_failover);
         lbpb = lbpb.permit_dc_failover(self.permit_dc_failover);
-        println!("enable_shuffling_replicas: {:?}", self.enable_shuffling_replicas);
         lbpb = lbpb.enable_shuffling_replicas(self.enable_shuffling_replicas);
         lbpb.build()
     }

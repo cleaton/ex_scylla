@@ -123,18 +123,6 @@ defmodule ExScylla.Native do
   def ep_build(_ep), do: e()
   def ep_into_handle(_ep), do: e()
 
-  # # LoadBalancingPolicy
-  # def lbp_builder(), do: e()
-  # def lbp_prefer_datacenter(_lbp, _dc), do: e()
-  # def lbp_prefer_rack(_lbp, _rack), do: e()
-  # # TODO: boolean flags should have ? at end
-  # def lbp_token_aware(_lbp, _token_aware), do: e()
-  # def lbp_permit_dc_failover(_lbp, _permit), do: e()
-  # def lbp_enable_shuffling_replicas(_lbp, _enable), do: e()
-  # # TODO LatencyAwarenessBuilder
-  # # def lbp_latency_awareness(_lbp, _latency_awareness_builder), do: e()
-  # def lbp_build(_lbp), do: e()
-
   # helpers
   defp e(), do: :erlang.nif_error(:nif_not_loaded)
   defp n(), do: {:error, :not_implemented_yet}
