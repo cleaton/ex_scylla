@@ -1,6 +1,7 @@
 defmodule ExScylla.Types.Errors.QueryError do
   alias ExScylla.Types.Errors.DbError
   alias ExScylla.Types.Errors.BadQuery
+  alias ExScylla.Types.Errors.TranslationError
   use ExScylla.Macros.Native
   @type msg :: String.t()
   @typedoc """
@@ -15,4 +16,5 @@ defmodule ExScylla.Types.Errors.QueryError do
            | {:timeout_error, msg()}
            | {:too_many_oprhaned_stream_ids, msg()}
            | {:unable_to_alloc_stream_id, msg()}
+           | {:translation_error, TranslationError.t()}
 end

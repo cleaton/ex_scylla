@@ -1,5 +1,3 @@
-
-
 defmodule ExScylla.Native do
   use Rustler,
       otp_app: :ex_scylla,

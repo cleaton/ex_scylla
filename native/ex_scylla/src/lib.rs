@@ -6,6 +6,7 @@ mod query;
 pub mod runtime;
 mod session;
 mod session_builder;
+mod settings;
 pub mod types;
 pub mod utils;
 use std::option::Option::Some;
@@ -15,42 +16,86 @@ rustler::init!(
     "Elixir.ExScylla.Native",
     [
         // SessionBuilder
+        //session_builder::sb_address_translator,
+        //session_builder::sb_authenticator_provider,
+        session_builder::sb_new,
+        //session_builder::sb_ssl_context,
+        session_builder::sb_user,
+        session_builder::sb_write_coalescing,
+        // GenericSessionBuilder
         session_builder::sb_auto_schema_agreement_timeout,
         session_builder::sb_build,
         session_builder::sb_compression,
         session_builder::sb_connection_timeout,
-        session_builder::sb_default_consistency,
+        ///session_builder::sb_default_execution_profile_handle,
         session_builder::sb_disallow_shard_aware_port,
         session_builder::sb_fetch_schema_metadata,
+        ///session_builder::sb_host_filter,
         session_builder::sb_keepalive_interval,
+        session_builder::sb_keepalive_timeout,
+        session_builder::sb_keyspaces_to_fetch,
         session_builder::sb_known_node,
         session_builder::sb_known_node_addr,
         session_builder::sb_known_nodes,
         session_builder::sb_known_nodes_addr,
-        session_builder::sb_load_balancing,
-        session_builder::sb_new,
+        ///session_builder::sb_load_balancing,
         session_builder::sb_no_auto_schema_agreement,
         session_builder::sb_pool_size,
-        session_builder::sb_retry_policy,
+        session_builder::sb_refresh_metadata_on_auto_schema_agreement,
         session_builder::sb_schema_agreement_interval,
-        session_builder::sb_speculative_execution,
+        session_builder::sb_tcp_keepalive_interval,
         session_builder::sb_tcp_nodelay,
-        session_builder::sb_use_keyspace,
-        session_builder::sb_user,
+        session_builder::sb_tracing_info_fetch_attempts,
+        session_builder::sb_tracing_info_fetch_consistency,
+        session_builder::sb_tracing_info_fetch_interval,
+        // SessionConfig
+        /*
+        address_translator
+        authenticator
+        auto_await_schema_agreement_timeout
+        cloud_config
+        compression
+        connect_timeout
+        connection_pool_size
+        default_execution_profile_handle
+        disallow_shard_aware_port
+        enable_write_coalescing
+        fetch_schema_metadata
+        host_filter
+        keepalive_interval
+        keepalive_timeout
+        keyspace_case_sensitive
+        keyspaces_to_fetch
+        known_nodes
+        refresh_metadata_on_auto_schema_agreement
+        schema_agreement_interval
+        ssl_context
+        tcp_keepalive_interval
+        tcp_nodelay
+        tracing_info_fetch_attempts
+        tracing_info_fetch_consistency
+        tracing_info_fetch_interval
+        used_keyspace
+        */
         // Session
         session::s_await_schema_agreement,
         session::s_await_timed_schema_agreement,
         session::s_batch,
+        /// session::s_calculate_token,
+        ///session::s_calculate_token_for_partition_key,
         session::s_check_schema_agreement,
+        ///session::s_connect,
         session::s_execute,
         //session::s_execute_iter,
         session::s_execute_paged,
         session::s_fetch_schema_version,
         //session::s_get_cluster_data,
+        ///session::s_get_default_execution_profile_handle,
+        ///session::s_get_keyspace,
         //session::s_get_metrics,
         //session::s_get_tracing_info,
-        //session::s_get_tracing_info_custom,
         session::s_prepare,
+        ///session::s_prepare_batch,
         session::s_query,
         //session::s_query_iter,
         session::s_query_paged,
@@ -59,16 +104,22 @@ rustler::init!(
         //Query
         query::q_disable_paging,
         query::q_get_consistency,
+        ///query::q_get_execution_profile_handle,
         query::q_get_is_idempotent,
         query::q_get_page_size,
+        ///query::q_get_request_timeout,
         query::q_get_retry_policy,
         query::q_get_serial_consistency,
         query::q_get_timestamp,
         query::q_get_tracing,
         query::q_new,
+        ///query::q_remove_history_listener,
         query::q_set_consistency,
+        ///query::q_set_execution_profile_handle,
+        ///query::q_set_history_listener,
         query::q_set_is_idempotent,
         query::q_set_page_size,
+        ///query::q_set_request_timeout,
         query::q_set_retry_policy,
         query::q_set_serial_consistency,
         query::q_set_timestamp,
@@ -77,6 +128,7 @@ rustler::init!(
         //Batch
         batch::b_append_statement,
         batch::b_get_consistency,
+        ///batch::b_get_execution_profile_handle,
         batch::b_get_is_idempotent,
         batch::b_get_retry_policy,
         batch::b_get_serial_consistency,
@@ -85,7 +137,10 @@ rustler::init!(
         batch::b_get_type,
         batch::b_new,
         batch::b_new_with_statements,
+        ///batch::b_remove_history_listener,
         batch::b_set_consistency,
+        ///batch::b_set_execution_profile_handle,
+        ///batch::b_set_history_listener,
         batch::b_set_is_idempotent,
         batch::b_set_retry_policy,
         batch::b_set_serial_consistency,
@@ -95,26 +150,70 @@ rustler::init!(
         prepared_statement::ps_compute_partition_key,
         prepared_statement::ps_disable_paging,
         prepared_statement::ps_get_consistency,
+        ///prepared_statement::ps_get_execution_profile_handle,
         prepared_statement::ps_get_id,
         prepared_statement::ps_get_is_idempotent,
         prepared_statement::ps_get_keyspace_name,
         prepared_statement::ps_get_page_size,
         prepared_statement::ps_get_prepare_tracing_ids,
         prepared_statement::ps_get_prepared_metadata,
+        ///prepared_statement::ps_get_request_timeout,
         prepared_statement::ps_get_retry_policy,
         prepared_statement::ps_get_serial_consistency,
         prepared_statement::ps_get_statement,
         prepared_statement::ps_get_table_name,
         prepared_statement::ps_get_timestamp,
         prepared_statement::ps_get_tracing,
+        ///prepared_statement::ps_is_confirmed_lwt,
         prepared_statement::ps_is_token_aware,
+        ///prepared_statement::ps_remove_history_listener,
         prepared_statement::ps_set_consistency,
+        ///prepared_statement::ps_set_execution_profile_handle,
+        ///prepared_statement::ps_set_history_listener,
         prepared_statement::ps_set_is_idempotent,
         prepared_statement::ps_set_page_size,
+        ///prepared_statement::set_request_timeout,
         prepared_statement::ps_set_retry_policy,
         prepared_statement::ps_set_serial_consistency,
         prepared_statement::ps_set_timestamp,
         prepared_statement::ps_set_tracing,
+        // ExecutionProfile
+        /*
+        builder
+        into_handle
+        into_handle_with_label
+        to_builder
+        */
+        // ExecutionProfileBuilder
+        /*
+        build
+        consistency
+        load_balancing_policy
+        request_timeout
+        retry_policy
+        serial_consistency
+        speculative_execution_policy
+        */
+        // DefaultPolicyBuilder
+        /*
+        build
+        enable_shuffling_replicas
+        latency_awareness
+        new
+        permit_dc_failover
+        prefer_datacenter
+        prefer_rack
+        token_aware
+        */
+        // LatencyAwarePolicyBuilder
+        /*
+        exclusion_threshold
+        minimum_measurements
+        new
+        retry_period
+        scale
+        update_rate
+        */
     ],
     load = load
 );
@@ -126,5 +225,21 @@ fn load(env: rustler::Env, _: rustler::Term) -> bool {
     rustler::resource!(batch::types::BatchResource, env);
     rustler::resource!(prepared_statement::types::PreparedStatementResource, env);
     rustler::resource!(query::types::QueryResource, env);
+    rustler::resource!(
+        settings::execution_profile_builder::ExecutionProfileBuilderResource,
+        env
+    );
+    rustler::resource!(
+        settings::execution_profile_handle::ExecutionProfileHandleResource,
+        env
+    );
+    rustler::resource!(settings::execution_profile::ExecutionProfileResource, env);
+    rustler::resource!(settings::load_balancing::DefaultPolicyBuilderResource, env);
+    rustler::resource!(settings::load_balancing::DefaultPolicyResource, env);
+    rustler::resource!(
+        settings::load_balancing::LatencyAwarenessPolicyBuilderResource,
+        env
+    );
+    rustler::resource!(settings::load_balancing::LoadBalancingPolicyResource, env);
     true
 }

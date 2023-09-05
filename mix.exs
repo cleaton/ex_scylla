@@ -4,7 +4,7 @@ defmodule ExScylla.MixProject do
   def project do
     [
       app: :ex_scylla,
-      version: "0.1.0",
+      version: "0.5.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       test_coverage: [tool: LcovEx, output: "cover"],
@@ -38,11 +38,11 @@ defmodule ExScylla.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.26"},
-      {:lcov_ex, "~> 0.2", only: [:test], runtime: false},
+      {:rustler, "~> 0.29.1"},
+      {:lcov_ex, "~> 0.3", only: [:test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:benchee, "~> 1.0", only: [:bench]},
-      {:erlcass, "~> 4.0", only: [:bench]}
+      {:erlcass, "~> 4.1", only: [:bench]}
     ]
   end
 end

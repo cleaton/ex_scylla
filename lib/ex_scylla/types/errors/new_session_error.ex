@@ -7,7 +7,7 @@ defmodule ExScylla.Types.Errors.NewSessionError do
     For more details, see:
       https://docs.rs/scylla/#{@scylla_version}/scylla/transport/errors/enum.NewSessionError.html
   """
-  @type t :: {:failed_to_resolve_address, msg()}
+  @type t :: {:failed_to_resolve_any_hostname, msg()}
            | {:empty_known_nodes_list, msg()}
            | {:db_error, DbError.t()}
            | {:bad_query, BadQuery.t()}
@@ -17,4 +17,5 @@ defmodule ExScylla.Types.Errors.NewSessionError do
            | {:timeout_error, msg()}
            | {:too_many_orphaned_stream_ids, msg()}
            | {:unable_to_alloc_stream_id, msg()}
+           | {:translation_error, TranslationError.t()}
 end

@@ -3,6 +3,7 @@ use rustler::types::Atom;
 use rustler::{NifTaggedEnum, NifTuple};
 use scylla::frame::value::SerializeValuesError;
 use scylla::transport::errors::{BadKeyspaceName, BadQuery, DbError};
+use scylla::transport::session::TranslationError;
 use scylla::{
     prepared_statement::PartitionKeyError,
     transport::errors::{NewSessionError, QueryError},
@@ -24,7 +25,9 @@ pub enum ScyllaQueryError {
     TooManyOrphanedStreamIds(String),
     UnableToAllocStreamId(String),
     RequestTimeout(String),
+    TranslationError(ScyllaTranslationError),
 }
+
 to_elixir!(QueryError, ScyllaQueryError, |qe: QueryError| {
     match qe {
         QueryError::DbError(dbe, _) => ScyllaQueryError::DbError(dbe.ex()),
@@ -38,10 +41,32 @@ to_elixir!(QueryError, ScyllaQueryError, |qe: QueryError| {
         }
         QueryError::UnableToAllocStreamId => {
             ScyllaQueryError::UnableToAllocStreamId(qe.to_string())
-        },
-        QueryError::RequestTimeout(msg) => ScyllaQueryError::RequestTimeout(msg)
+        }
+        QueryError::RequestTimeout(msg) => ScyllaQueryError::RequestTimeout(msg),
+        QueryError::TranslationError(err) => ScyllaQueryError::TranslationError(err.ex()),
     }
 });
+
+// Update ExScylla.Types.Errors.TranslationError on change
+#[derive(NifTaggedEnum, Debug)]
+pub enum ScyllaTranslationError {
+    NoRuleForAddress(String),
+    InvalidAddressInRule(String),
+}
+
+to_elixir!(
+    TranslationError,
+    ScyllaTranslationError,
+    |te: TranslationError| {
+        let msg = te.to_string();
+        match te {
+            TranslationError::InvalidAddressInRule => {
+                ScyllaTranslationError::InvalidAddressInRule(msg)
+            }
+            TranslationError::NoRuleForAddress => ScyllaTranslationError::NoRuleForAddress(msg),
+        }
+    }
+);
 
 // Update ExScylla.Types.Errors.DbError on change
 #[derive(NifTaggedEnum, Debug)]
@@ -97,16 +122,14 @@ to_elixir!(DbError, ScyllaDbError, |dbe: DbError| {
 #[derive(NifTaggedEnum, Debug)]
 pub enum ScyllaBadQuery {
     SerializeValuesError(ScyllaSerializeValuesError),
-    ValueLenMismatch(String),
     ValuesTooLongForKey(String),
     BadKeyspaceName(ScyllaBadKeyspaceName),
-    Other(String)
+    Other(String),
 }
 
 to_elixir!(BadQuery, ScyllaBadQuery, |bq| {
     match bq {
         BadQuery::SerializeValuesError(e) => ScyllaBadQuery::SerializeValuesError(e.ex()),
-        BadQuery::ValueLenMismatch(_, _) => ScyllaBadQuery::ValueLenMismatch(bq.to_string()),
         BadQuery::ValuesTooLongForKey(_, _) => ScyllaBadQuery::ValuesTooLongForKey(bq.to_string()),
         BadQuery::BadKeyspaceName(bkn) => ScyllaBadQuery::BadKeyspaceName(bkn.ex()),
         BadQuery::Other(msg) => ScyllaBadQuery::Other(msg),
@@ -139,7 +162,7 @@ to_elixir!(
 
 #[derive(NifTaggedEnum, Debug)]
 pub enum ScyllaNewSessionError {
-    FailedToResolveAddress(String),
+    FailedToResolveAnyHostname(String),
     EmptyKnownNodesList(String),
     DbError(ScyllaDbError),
     BadQuery(ScyllaBadQuery),
@@ -150,11 +173,12 @@ pub enum ScyllaNewSessionError {
     TooManyOrphanedStreamIds(String),
     UnableToAllocStreamId(String),
     RequestTimeout(String),
+    TranslationError(ScyllaTranslationError),
 }
 to_elixir!(NewSessionError, ScyllaNewSessionError, |nse| {
     match nse {
-        NewSessionError::FailedToResolveAddress(_) => {
-            ScyllaNewSessionError::FailedToResolveAddress(nse.to_string())
+        NewSessionError::FailedToResolveAnyHostname(_) => {
+            ScyllaNewSessionError::FailedToResolveAnyHostname(nse.to_string())
         }
         NewSessionError::EmptyKnownNodesList => {
             ScyllaNewSessionError::EmptyKnownNodesList(nse.to_string())
@@ -173,7 +197,8 @@ to_elixir!(NewSessionError, ScyllaNewSessionError, |nse| {
         NewSessionError::UnableToAllocStreamId => {
             ScyllaNewSessionError::UnableToAllocStreamId(nse.to_string())
         }
-        NewSessionError::RequestTimeout(msg) => ScyllaNewSessionError::RequestTimeout(msg)
+        NewSessionError::RequestTimeout(msg) => ScyllaNewSessionError::RequestTimeout(msg),
+        NewSessionError::TranslationError(te) => ScyllaNewSessionError::TranslationError(te.ex()),
     }
 });
 #[derive(NifTaggedEnum, Debug)]
