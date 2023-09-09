@@ -57,8 +57,8 @@ pub enum ScyllaSpeculativeExecutionPolicy {
     Percentile(ScyllaPercentileSpeculativeExecutionPolicy),
 }
 
-impl ToRust<Arc<dyn SpeculativeExecutionPolicy>> for ScyllaSpeculativeExecutionPolicy {
-    fn r(self) -> Arc<dyn SpeculativeExecutionPolicy> {
+impl Into<Arc<dyn SpeculativeExecutionPolicy>> for ScyllaSpeculativeExecutionPolicy {
+    fn into(self) -> Arc<dyn SpeculativeExecutionPolicy> {
         match self {
             Self::Simple(e) => e.into(),
             Self::Percentile(e) => e.into(),

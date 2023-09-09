@@ -10,13 +10,15 @@ use super::{
 
 pub struct ExecutionProfileResource(pub ExecutionProfile);
 
-fn ep_builder() -> ResourceArc<ExecutionProfileBuilderResource> {
+#[rustler::nif]
+pub fn ep_builder() -> ResourceArc<ExecutionProfileBuilderResource> {
     ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(Cell::new(
         ExecutionProfile::builder(),
     ))))
 }
 
-fn ep_into_handle(
+#[rustler::nif]
+pub fn ep_into_handle(
     ep: ResourceArc<ExecutionProfileResource>,
 ) -> ResourceArc<ExecutionProfileHandleResource> {
     let profile: ExecutionProfile = ep.0.clone();
@@ -25,7 +27,8 @@ fn ep_into_handle(
     ))))
 }
 
-fn ep_into_handle_with_label(
+#[rustler::nif]
+pub fn ep_into_handle_with_label(
     ep: ResourceArc<ExecutionProfileResource>,
     label: String,
 ) -> ResourceArc<ExecutionProfileHandleResource> {
@@ -35,7 +38,8 @@ fn ep_into_handle_with_label(
     ))))
 }
 
-fn ep_to_builder(
+#[rustler::nif]
+pub fn ep_to_builder(
     ep: ResourceArc<ExecutionProfileResource>,
 ) -> ResourceArc<ExecutionProfileBuilderResource> {
     ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(Cell::new(

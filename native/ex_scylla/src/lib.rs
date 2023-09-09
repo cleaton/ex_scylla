@@ -10,35 +10,37 @@ mod settings;
 pub mod types;
 pub mod utils;
 use std::option::Option::Some;
+use settings::execution_profile;
+use settings::execution_profile_builder;
+use settings::execution_profile_handle;
+use settings::load_balancing;
 
 // Setup
 rustler::init!(
     "Elixir.ExScylla.Native",
     [
         // SessionBuilder
+        // GenericSessionBuilder
+        ///session_builder::sb_default_execution_profile_handle,
+        ///session_builder::sb_host_filter,
+        ///session_builder::sb_load_balancing,
         //session_builder::sb_address_translator,
         //session_builder::sb_authenticator_provider,
-        session_builder::sb_new,
         //session_builder::sb_ssl_context,
-        session_builder::sb_user,
-        session_builder::sb_write_coalescing,
-        // GenericSessionBuilder
         session_builder::sb_auto_schema_agreement_timeout,
         session_builder::sb_build,
         session_builder::sb_compression,
         session_builder::sb_connection_timeout,
-        ///session_builder::sb_default_execution_profile_handle,
         session_builder::sb_disallow_shard_aware_port,
         session_builder::sb_fetch_schema_metadata,
-        ///session_builder::sb_host_filter,
         session_builder::sb_keepalive_interval,
         session_builder::sb_keepalive_timeout,
         session_builder::sb_keyspaces_to_fetch,
-        session_builder::sb_known_node,
         session_builder::sb_known_node_addr,
-        session_builder::sb_known_nodes,
+        session_builder::sb_known_node,
         session_builder::sb_known_nodes_addr,
-        ///session_builder::sb_load_balancing,
+        session_builder::sb_known_nodes,
+        session_builder::sb_new,
         session_builder::sb_no_auto_schema_agreement,
         session_builder::sb_pool_size,
         session_builder::sb_refresh_metadata_on_auto_schema_agreement,
@@ -48,6 +50,8 @@ rustler::init!(
         session_builder::sb_tracing_info_fetch_attempts,
         session_builder::sb_tracing_info_fetch_consistency,
         session_builder::sb_tracing_info_fetch_interval,
+        session_builder::sb_user,
+        session_builder::sb_write_coalescing,
         // SessionConfig
         /*
         address_translator
@@ -81,7 +85,7 @@ rustler::init!(
         session::s_await_schema_agreement,
         session::s_await_timed_schema_agreement,
         session::s_batch,
-        /// session::s_calculate_token,
+        session::s_calculate_token,
         ///session::s_calculate_token_for_partition_key,
         session::s_check_schema_agreement,
         ///session::s_connect,
@@ -178,42 +182,34 @@ rustler::init!(
         prepared_statement::ps_set_timestamp,
         prepared_statement::ps_set_tracing,
         // ExecutionProfile
-        /*
-        builder
-        into_handle
-        into_handle_with_label
-        to_builder
-        */
+        execution_profile::ep_builder,
+        execution_profile::ep_into_handle,
+        execution_profile::ep_into_handle_with_label,
+        execution_profile::ep_to_builder,
         // ExecutionProfileBuilder
-        /*
-        build
-        consistency
-        load_balancing_policy
-        request_timeout
-        retry_policy
-        serial_consistency
-        speculative_execution_policy
-        */
+        execution_profile_builder::epb_build,
+        execution_profile_builder::epb_consistency,
+        execution_profile_builder::epb_load_balancing_policy,
+        execution_profile_builder::epb_request_timeout,
+        execution_profile_builder::epb_retry_policy,
+        execution_profile_builder::epb_serial_consistency,
+        execution_profile_builder::epb_speculative_execution_policy,
         // DefaultPolicyBuilder
-        /*
-        build
-        enable_shuffling_replicas
-        latency_awareness
-        new
-        permit_dc_failover
-        prefer_datacenter
-        prefer_rack
-        token_aware
-        */
-        // LatencyAwarePolicyBuilder
-        /*
-        exclusion_threshold
-        minimum_measurements
-        new
-        retry_period
-        scale
-        update_rate
-        */
+        load_balancing::dpb_build,
+        load_balancing::dpb_enable_shuffling_replicas,
+        load_balancing::dpb_latency_awareness,
+        load_balancing::dpb_new,
+        load_balancing::dpb_permit_dc_failover,
+        load_balancing::dpb_prefer_datacenter,
+        load_balancing::dpb_prefer_rack,
+        load_balancing::dpb_token_aware,
+        // LatencyAwarenessBuilder
+        load_balancing::lab_exclusion_threshold,
+        load_balancing::lab_minimum_measurements,
+        load_balancing::lab_new,
+        load_balancing::lab_retry_period,
+        load_balancing::lab_scale,
+        load_balancing::lab_update_rate,
     ],
     load = load
 );

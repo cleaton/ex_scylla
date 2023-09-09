@@ -1,3 +1,4 @@
+use crate::settings::speculative_execution::ScyllaSpeculativeExecutionPolicy;
 use crate::types::*;
 use rustler::ResourceArc;
 use scylla::execution_profile::ExecutionProfileBuilder;
@@ -29,6 +30,7 @@ macro_rules! use_builder {
     };
 }
 
+#[rustler::nif]
 fn epb_build(
     epbr: ResourceArc<ExecutionProfileBuilderResource>,
 ) -> ResourceArc<ExecutionProfileResource> {
@@ -38,6 +40,7 @@ fn epb_build(
     ResourceArc::new(ExecutionProfileResource(epbc.build()))
 }
 
+#[rustler::nif]
 fn epb_consistency(
     epbr: ResourceArc<ExecutionProfileBuilderResource>,
     consistency: ScyllaConsistency,
@@ -48,6 +51,7 @@ fn epb_consistency(
     epbr
 }
 
+#[rustler::nif]
 fn epb_load_balancing_policy(
     epbr: ResourceArc<ExecutionProfileBuilderResource>,
     load_balancing_policy: ResourceArc<LoadBalancingPolicyResource>,
@@ -58,6 +62,7 @@ fn epb_load_balancing_policy(
     epbr
 }
 
+#[rustler::nif]
 fn epb_request_timeout(
     epbr: ResourceArc<ExecutionProfileBuilderResource>,
     timeout_ms: Option<u64>,
@@ -68,6 +73,7 @@ fn epb_request_timeout(
     epbr
 }
 
+#[rustler::nif]
 fn epb_retry_policy(
     epbr: ResourceArc<ExecutionProfileBuilderResource>,
     retry_policy: ScyllaRetryPolicy,
@@ -78,6 +84,7 @@ fn epb_retry_policy(
     epbr
 }
 
+#[rustler::nif]
 fn epb_serial_consistency(
     epbr: ResourceArc<ExecutionProfileBuilderResource>,
     serial_consistency: Option<ScyllaSerialConsistency>,
@@ -91,12 +98,13 @@ fn epb_serial_consistency(
     epbr
 }
 
+#[rustler::nif]
 fn epb_speculative_execution_policy(
     epbr: ResourceArc<ExecutionProfileBuilderResource>,
-    speculative_execution_policy: Option<Arc<dyn SpeculativeExecutionPolicy>>,
+    speculative_execution_policy: Option<ScyllaSpeculativeExecutionPolicy>,
 ) -> ResourceArc<ExecutionProfileBuilderResource> {
     use_builder!(epbr, |epb: ExecutionProfileBuilder| {
-        epb.speculative_execution_policy(speculative_execution_policy.into())
+        epb.speculative_execution_policy(speculative_execution_policy.map(|sep| sep.into()))
     });
     epbr
 }

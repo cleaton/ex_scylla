@@ -18,6 +18,7 @@ use scylla::frame::value::CqlDuration;
 use scylla::query::Query;
 use scylla::QueryResult;
 use scylla::Session;
+use scylla::routing::Token;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::io::Write;
@@ -44,6 +45,18 @@ impl Into<BatchStatement> for ScyllaBatchStatement {
             Self::QueryResource(q) => q.0.to_owned().into(),
             Self::PreparedStatement(ps) => ps.0.to_owned().into(),
         }
+    }
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.Token"]
+pub struct ScyllaToken {
+    pub value: i64,
+}
+
+impl From<Token> for ScyllaToken {
+    fn from(t: Token) -> Self {
+        ScyllaToken { value: t.value }
     }
 }
 

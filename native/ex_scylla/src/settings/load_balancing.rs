@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
+use std::time::Duration;
 
 use rustler::ResourceArc;
 use scylla::load_balancing::LoadBalancingPolicy;
@@ -20,6 +21,15 @@ macro_rules! use_builder {
     };
 }
 
+macro_rules! use_builder_lab {
+    ($labr:ident, $e:expr) => {
+        let guard = $labr.0.lock().unwrap();
+        guard.set($e(guard.take()));
+        drop(guard);
+    };
+}
+
+#[rustler::nif]
 fn dpb_build(
     dpbr: ResourceArc<DefaultPolicyBuilderResource>,
 ) -> ResourceArc<LoadBalancingPolicyResource> {
@@ -28,6 +38,8 @@ fn dpb_build(
     drop(guard);
     ResourceArc::new(LoadBalancingPolicyResource(builder.build()))
 }
+
+#[rustler::nif]
 fn dpb_enable_shuffling_replicas(
     dpbr: ResourceArc<DefaultPolicyBuilderResource>,
     enable: bool,
@@ -38,6 +50,7 @@ fn dpb_enable_shuffling_replicas(
     dpbr
 }
 
+#[rustler::nif]
 fn dpb_latency_awareness(
     dpbr: ResourceArc<DefaultPolicyBuilderResource>,
     latency_awareness_builder: ResourceArc<LatencyAwarenessPolicyBuilderResource>,
@@ -52,12 +65,14 @@ fn dpb_latency_awareness(
     dpbr
 }
 
+#[rustler::nif]
 fn dpb_new() -> ResourceArc<DefaultPolicyBuilderResource> {
     ResourceArc::new(DefaultPolicyBuilderResource(Mutex::new(Cell::new(
         DefaultPolicyBuilder::new(),
     ))))
 }
 
+#[rustler::nif]
 fn dpb_permit_dc_failover(
     dpbr: ResourceArc<DefaultPolicyBuilderResource>,
     permit: bool,
@@ -68,6 +83,7 @@ fn dpb_permit_dc_failover(
     dpbr
 }
 
+#[rustler::nif]
 fn dpb_prefer_datacenter(
     dpbr: ResourceArc<DefaultPolicyBuilderResource>,
     datacenter_name: String,
@@ -77,6 +93,8 @@ fn dpb_prefer_datacenter(
     });
     dpbr
 }
+
+#[rustler::nif]
 fn dpb_prefer_rack(
     dpbr: ResourceArc<DefaultPolicyBuilderResource>,
     rack_name: String,
@@ -86,6 +104,8 @@ fn dpb_prefer_rack(
     });
     dpbr
 }
+
+#[rustler::nif]
 fn dpb_token_aware(
     dpbr: ResourceArc<DefaultPolicyBuilderResource>,
     is_token_aware: bool,
@@ -95,3 +115,65 @@ fn dpb_token_aware(
     });
     dpbr
 }
+
+
+#[rustler::nif]
+fn lab_exclusion_threshold(
+    labr: ResourceArc<LatencyAwarenessPolicyBuilderResource>,
+    exclusion_threshold: f64,
+) -> ResourceArc<LatencyAwarenessPolicyBuilderResource> {
+    use_builder_lab!(labr, |lab: LatencyAwarenessBuilder| {
+        lab.exclusion_threshold(exclusion_threshold)
+    });
+    labr
+}
+
+#[rustler::nif]
+fn lab_minimum_measurements(
+    labr: ResourceArc<LatencyAwarenessPolicyBuilderResource>,
+    minimum_measurements: usize,
+) -> ResourceArc<LatencyAwarenessPolicyBuilderResource> {
+    use_builder_lab!(labr, |lab: LatencyAwarenessBuilder| {
+        lab.minimum_measurements(minimum_measurements)
+    });
+    labr
+}
+
+#[rustler::nif]
+fn lab_new() -> ResourceArc<LatencyAwarenessPolicyBuilderResource> {
+    ResourceArc::new(LatencyAwarenessPolicyBuilderResource(Mutex::new(Cell::new(LatencyAwarenessBuilder::new()))))
+}
+
+#[rustler::nif]
+fn lab_retry_period(
+    labr: ResourceArc<LatencyAwarenessPolicyBuilderResource>,
+    retry_period_ms: u64,
+) -> ResourceArc<LatencyAwarenessPolicyBuilderResource> {
+    use_builder_lab!(labr, |lab: LatencyAwarenessBuilder| {
+        lab.retry_period(Duration::from_millis(retry_period_ms))
+    });
+    labr
+}
+
+#[rustler::nif]
+fn lab_scale(
+    labr: ResourceArc<LatencyAwarenessPolicyBuilderResource>,
+    scale_ms: u64,
+) -> ResourceArc<LatencyAwarenessPolicyBuilderResource> {
+    use_builder_lab!(labr, |lab: LatencyAwarenessBuilder| {
+        lab.scale(Duration::from_millis(scale_ms))
+    });
+    labr
+}
+
+#[rustler::nif]
+fn lab_update_rate(
+    labr: ResourceArc<LatencyAwarenessPolicyBuilderResource>,
+    update_rate_ms: u64,
+) -> ResourceArc<LatencyAwarenessPolicyBuilderResource> {
+    use_builder_lab!(labr, |lab: LatencyAwarenessBuilder| {
+        lab.update_rate(Duration::from_millis(update_rate_ms))
+    });
+    labr
+}
+
