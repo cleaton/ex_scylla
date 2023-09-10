@@ -31,22 +31,23 @@ defmodule ExScylla.Native do
       def sb_user(_sbr, _username, _passwd), do: e()
       def sb_write_coalescing, do: e()
       # Session
+      # //session::s_execute_iter,
+      # //session::s_get_cluster_data,
+      # //session::s_get_metrics,
+      # //session::s_get_tracing_info_custom,
+      # //session::s_get_tracing_info,
+      # //session::s_query_iter,
       def s_await_schema_agreement(_opaque, _session), do: e()
       def s_await_timed_schema_agreement(_opaque, _session, _timeout_ms), do: e()
       def s_batch(_opaque, _session, _batch, _values), do: e()
+      def s_caclulate_token(), do: e()
       def s_check_schema_agreement(_opaque, _session), do: e()
-      def s_execute(_opaque, _session, _prepared, _values), do: e()
-      # //session::s_execute_iter,
       def s_execute_paged(_opaque, _session, _prepared, _values, _paging_state), do: e()
+      def s_execute(_opaque, _session, _prepared, _values), do: e()
       def s_fetch_schema_version(_opaque, _session), do: e()
-      # //session::s_get_cluster_data,
-      # //session::s_get_metrics,
-      # //session::s_get_tracing_info,
-      # //session::s_get_tracing_info_custom,
       def s_prepare(_opaque, _session, _query), do: e()
-      def s_query(_opaque_, _session, _query, _values), do: e()
-      # //session::s_query_iter,
       def s_query_paged(_opaque, _session, _query, _values, _paging_state), do: e()
+      def s_query(_opaque_, _session, _query, _values), do: e()
       def s_refresh_metadata(_opaque, _session), do: e()
       def s_use_keyspace(_opaque, _session, _keyspace_name, _case_sensitive), do: e()
       # Query
@@ -76,8 +77,8 @@ defmodule ExScylla.Native do
       def b_get_timestamp(_batch), do: e()
       def b_get_tracing(_batch), do: e()
       def b_get_type(_batch), do: e()
-      def b_new(_batch_type), do: e()
       def b_new_with_statements(_batch_type, _statements), do: e()
+      def b_new(_batch_type), do: e()
       def b_set_consistency(_batch, _consistency), do: e()
       def b_set_is_idempotent(_batch, _is_idempotent), do: e()
       def b_set_retry_policy(_batch, _retry_policy), do: n()
@@ -110,8 +111,8 @@ defmodule ExScylla.Native do
       def ps_set_tracing(_ps, _should_trace), do: e()
       # ExecutionProfile
       def ep_builder, do: e()
-      def ep_into_handle, do: e()
       def ep_into_handle_with_label, do: e()
+      def ep_into_handle, do: e()
       def ep_to_builder, do: e()
       # ExecutionProfileBuilder
       def epb_build, do: e()
@@ -121,6 +122,9 @@ defmodule ExScylla.Native do
       def epb_retry_policy, do: e()
       def epb_serial_consistency, do: e()
       def epb_speculative_execution_policy, do: e()
+      # ExecutionProfileHandle
+      def eph_map_to_another_profile, do: e()
+      def eph_pointee_to_builder, do: e()
       # DefaultPolicyBuilder
       def dpb_build, do: e()
       def dpb_enable_shuffling_replicas, do: e()

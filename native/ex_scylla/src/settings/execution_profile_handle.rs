@@ -7,6 +7,7 @@ use super::execution_profile::ExecutionProfileResource;
 use super::execution_profile_builder::ExecutionProfileBuilderResource;
 pub struct ExecutionProfileHandleResource(pub Mutex<Cell<ExecutionProfileHandle>>);
 
+#[rustler::nif]
 fn eph_map_to_another_profile(
     ephr: ResourceArc<ExecutionProfileHandleResource>,
     profile: ResourceArc<ExecutionProfileResource>,
@@ -16,6 +17,7 @@ fn eph_map_to_another_profile(
     guard.get_mut().map_to_another_profile(profile.0.clone());
 }
 
+#[rustler::nif]
 fn eph_pointee_to_builder(
     ephr: ResourceArc<ExecutionProfileHandleResource>,
 ) -> ResourceArc<ExecutionProfileBuilderResource> {
