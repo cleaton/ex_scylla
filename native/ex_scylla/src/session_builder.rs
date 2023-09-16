@@ -1,7 +1,9 @@
 pub mod types;
 use rustler::env::{OwnedEnv, SavedTerm};
+use scylla::execution_profile::ExecutionProfileHandle;
 //use consistency::Consistency;
 use super::runtime;
+use crate::settings::execution_profile_handle::ExecutionProfileHandleResource;
 use crate::settings::pool_size::ScyllaPoolSize;
 use rustler::types::atom;
 use rustler::{Atom, Encoder, Env, NifResult, ResourceArc, Term};
@@ -25,6 +27,19 @@ macro_rules! use_builder {
 }
 
 // SesisonBuilder methods
+#[rustler::nif]
+fn sb_default_execution_profile_handle(
+    sbr: ResourceArc<SessionBuilderResource>,
+    ephr: ResourceArc<ExecutionProfileHandleResource>
+) -> ResourceArc<SessionBuilderResource> {
+    let mutex: &Mutex<Cell<ExecutionProfileHandle>> = &ephr.0;
+    let mut guard = mutex.lock().unwrap();
+    let eph: ExecutionProfileHandle = guard.get_mut().clone();
+    drop(guard);
+    use_builder!(sbr, |sb: SessionBuilder| { sb.default_execution_profile_handle(eph) });
+    sbr
+}
+
 #[rustler::nif]
 fn sb_write_coalescing(
     sbr: ResourceArc<SessionBuilderResource>,

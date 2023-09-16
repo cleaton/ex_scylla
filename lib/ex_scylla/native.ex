@@ -5,6 +5,12 @@ defmodule ExScylla.Native do
       env: if Mix.env() == :test, do: [{"RUSTFLAGS", "-C instrument-coverage"}], else: []
 
       # SessionBuilder
+      def sb_default_execution_profile_handle(_sbr, _ephr), do: e()
+      #def sb_host_filter(_sbr)
+      #def sb_load_balancing(_sbr)
+      #def sb_address_translator(_sbr)
+      #def sb_authenticator_provider(_sbr)
+      #def sb_ssl_context(_sbr)
       def sb_auto_schema_agreement_timeout(_sbr, _timeout_ms), do: e()
       def sb_build(_opaque, _sbr), do: e()
       def sb_compression(_sbr, _compression), do: e()
@@ -12,8 +18,8 @@ defmodule ExScylla.Native do
       def sb_disallow_shard_aware_port(_sbr, _disallow), do: e()
       def sb_fetch_schema_metadata(_sbr, _fetch), do: e()
       def sb_keepalive_interval(_sbr, _interval_ms), do: e()
-      def sb_keepalive_timeout(), do: e()
-      def sb_keyspaces_to_fetch(), do: e()
+      def sb_keepalive_timeout(_sbr, _timeout_ms), do: e()
+      def sb_keyspaces_to_fetch(_sbr, _keyspaces), do: e()
       def sb_known_node_addr(_sbr, _node_addr), do: e()
       def sb_known_node(_sbr, _hostname), do: e()
       def sb_known_nodes_addr(_sbr, _node_addrs), do: e()
@@ -21,16 +27,21 @@ defmodule ExScylla.Native do
       def sb_new(), do: e()
       def sb_no_auto_schema_agreement(_sbr), do: e()
       def sb_pool_size(_sbr, _size), do: e()
-      def sb_refresh_metadata_on_auto_schema_agreement(), do: e()
+      def sb_refresh_metadata_on_auto_schema_agreement(_sbr, _refresh_metadata), do: e()
       def sb_schema_agreement_interval(_sbr, _interval_ms), do: e()
-      def sb_tcp_keepalive_interval(), do: e()
+      def sb_tcp_keepalive_interval(_sbr, _interval_ms), do: e()
       def sb_tcp_nodelay(_sbr, _nodelay), do: e()
-      def sb_tracing_info_fetch_attemts(), do: e()
-      def sb_tracing_info_fetch_consistency, do: e()
-      def sb_tracing_info_fetch_interval(), do: e()
+      #def sb_tracing_info_fetch_attemts(), do: e()
+      #def sb_tracing_info_fetch_consistency, do: e()
+      #def sb_tracing_info_fetch_interval(), do: e()
       def sb_user(_sbr, _username, _passwd), do: e()
-      def sb_write_coalescing, do: e()
+      #def sb_write_coalescing, do: e()
       # Session
+      # //session::s_calculate_token_for_partition_key,
+      # //session::s_connect,
+      # //session::s_get_default_execution_profile_handle,
+      # //session::s_get_keyspace,
+      # //session::s_prepare_batch,
       # //session::s_execute_iter,
       # //session::s_get_cluster_data,
       # //session::s_get_metrics,
@@ -40,7 +51,7 @@ defmodule ExScylla.Native do
       def s_await_schema_agreement(_opaque, _session), do: e()
       def s_await_timed_schema_agreement(_opaque, _session, _timeout_ms), do: e()
       def s_batch(_opaque, _session, _batch, _values), do: e()
-      def s_caclulate_token(), do: e()
+      def s_calculate_token(_session, _prepared, _values), do: e()
       def s_check_schema_agreement(_opaque, _session), do: e()
       def s_execute_paged(_opaque, _session, _prepared, _values, _paging_state), do: e()
       def s_execute(_opaque, _session, _prepared, _values), do: e()
@@ -51,6 +62,12 @@ defmodule ExScylla.Native do
       def s_refresh_metadata(_opaque, _session), do: e()
       def s_use_keyspace(_opaque, _session, _keyspace_name, _case_sensitive), do: e()
       # Query
+      # //query::q_get_execution_profile_handle,
+      # //query::q_get_request_timeout,
+      # //query::q_remove_history_listener,
+      # //query::q_set_execution_profile_handle,
+      # //query::q_set_history_listener,
+      # //query::q_set_request_timeout,
       def q_disable_paging(_q), do: e()
       def q_get_consistency(_q), do: e()
       def q_get_is_idempotent(_q), do: e()
@@ -69,6 +86,10 @@ defmodule ExScylla.Native do
       def q_set_tracing(_q, _should_trace), do: e()
       def q_with_page_size(_q, _page_size), do: e()
       # Batch
+      # //batch::b_get_execution_profile_handle,
+      # //batch::b_remove_history_listener,
+      # //batch::b_set_execution_profile_handle,
+      # //batch::b_set_history_listener,
       def b_append_statement(_batch, _statement), do: e()
       def b_get_consistency(_batch), do: e()
       def b_get_is_idempotent(_batch), do: e()
@@ -86,6 +107,13 @@ defmodule ExScylla.Native do
       def b_set_timestamp(_batch, _timestamp_micros), do: e()
       def b_set_tracing(_batch, _should_trace), do: e()
       # PreparedStatement
+      # //prepared_statement::ps_get_execution_profile_handle,
+      # //prepared_statement::ps_get_request_timeout,
+      # //prepared_statement::ps_is_confirmed_lwt,
+      # //prepared_statement::ps_remove_history_listener,
+      # //prepared_statement::ps_set_execution_profile_handle,
+      # //prepared_statement::ps_set_history_listener,
+      # //prepared_statement::set_request_timeout,
       def ps_compute_partition_key(_ps, _bound_values), do: e()
       def ps_disable_paging(_ps), do: e()
       def ps_get_consistency(_ps), do: e()
@@ -112,16 +140,16 @@ defmodule ExScylla.Native do
       # ExecutionProfile
       def ep_builder, do: e()
       def ep_into_handle_with_label, do: e()
-      def ep_into_handle, do: e()
+      def ep_into_handle(_ep), do: e()
       def ep_to_builder, do: e()
       # ExecutionProfileBuilder
-      def epb_build, do: e()
-      def epb_consistency, do: e()
-      def epb_load_balancing_policy, do: e()
-      def epb_request_timeout, do: e()
-      def epb_retry_policy, do: e()
-      def epb_serial_consistency, do: e()
-      def epb_speculative_execution_policy, do: e()
+      def epb_build(_epb), do: e()
+      def epb_consistency(_epb, _consistency), do: e()
+      def epb_load_balancing_policy(_epb, _lb_policy), do: e()
+      def epb_request_timeout(_epb, _timeout_ms), do: e()
+      def epb_retry_policy(_epb, _retry_policy), do: e()
+      def epb_serial_consistency(_epb, _serial_consistency), do: e()
+      def epb_speculative_execution_policy(_epb, _speculative_execution_policy), do: e()
       # ExecutionProfileHandle
       def eph_map_to_another_profile, do: e()
       def eph_pointee_to_builder, do: e()

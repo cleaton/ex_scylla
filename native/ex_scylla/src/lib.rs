@@ -21,7 +21,7 @@ rustler::init!(
     [
         // SessionBuilder
         // GenericSessionBuilder
-        //session_builder::sb_default_execution_profile_handle,
+        session_builder::sb_default_execution_profile_handle,
         //session_builder::sb_host_filter,
         //session_builder::sb_load_balancing,
         //session_builder::sb_address_translator,
