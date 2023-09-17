@@ -65,10 +65,9 @@ end
 :ets.new(:exscylla, [:ordered_set, :named_table])
 {:ok, session} = SessionBuilder.new()
       |> SessionBuilder.known_node("127.0.0.1:9042")
-      |> SessionBuilder.default_consistency(:one)
-      |> SessionBuilder.use_keyspace("load_test_erlcass", true)
       |> SessionBuilder.tcp_nodelay(true)
       |> SessionBuilder.build()
+Session.use_keyspace(session, "load_test_erlcass", true)
 :ets.insert(:exscylla, {:s, session})
 {:ok, ps} = Session.prepare(session, q)
 :ets.insert(:exscylla, {:ps, ps})
@@ -78,7 +77,7 @@ Benchee.run(
     "erlcass" => {
       fn {input, _} ->
         Enum.map(input, fn _ -> :erlcass.async_execute(:testing_query, [Enum.random(args)]) end)
-        |> Enum.map(fn {ok, _Tag} ->
+        |> Enum.map(fn {:ok, _Tag} ->
           receive do
             {:execute_statement_result, _, {:ok, _, _}} ->
               :ok
@@ -96,7 +95,7 @@ Benchee.run(
       "exscylla" => {
         fn {input, _} ->
           Enum.map(input, fn _ -> Session.async_execute(session, ps, [{:text, Enum.random(args)}]) end)
-          |> Enum.map(fn {ok, _Tag} ->
+          |> Enum.map(fn {:ok, _Tag} ->
             receive do
               {{:execute, _}, {:ok, _}} ->
                 :ok
@@ -113,11 +112,11 @@ Benchee.run(
         },
   },
   inputs: %{
-    "Small" => Enum.to_list(1..10),
+    "Small" => Enum.to_list(1..1),
     #"Medium" => Enum.to_list(1..10_000),
     #"Large" => Enum.to_list(1..100_000)
   },
   time: 10,
-  parallel: 20
+  parallel: 5000
   #profile_after: {:fprof, []}
 )
