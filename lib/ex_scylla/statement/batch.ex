@@ -50,6 +50,7 @@ defmodule ExScylla.Statement.Batch do
            return_spec: T.serial_consistency() | nil,
            doc_example: """
            iex> batch = Batch.new(:unlogged)
+           ...>          |> Batch.set_serial_consistency(:local_serial)
            iex> :local_serial = Batch.get_serial_consistency(batch)
            """
 

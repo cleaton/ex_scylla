@@ -6,8 +6,6 @@ use scylla::speculative_execution::{
     SpeculativeExecutionPolicy,
 };
 
-use crate::utils::ToRust;
-
 #[derive(NifStruct, Debug)]
 #[module = "ExScylla.Types.SimpleSpeculativeExecutionPolicy"]
 pub struct ScyllaSimpleSpeculativeExecutionPolicy {

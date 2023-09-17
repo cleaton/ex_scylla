@@ -6,6 +6,7 @@ defmodule SessionTest do
   alias ExScylla.Statement.Prepared
   alias ExScylla.Statement.Query
   alias ExScylla.Types.QueryResult
+  alias ExScylla.Types.Token
   doctest Session
 
   setup_all do

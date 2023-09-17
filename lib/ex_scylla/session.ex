@@ -54,11 +54,12 @@ defmodule ExScylla.Session do
   native_f       func: :calculate_token,
                  args: [session, prepared, values],
                  args_spec: [T.session(), T.prepared_statement(), T.values()],
-                 return_spec: {:ok, Token.t() | nil} | {:error, SerializeValuesError.t() | QueryError.t()},
+                 return_spec: Token.t() | nil | {:error, SerializeValuesError.t() | QueryError.t()},
+                 example_setup: :session_setup,
                  doc_example: """
                  iex> {:ok, ps} = Session.prepare(session, "SELECT * FROM test.s_doc WHERE a = ?;")
                  iex> values = [{:text, "test"}]
-                 iex> {:ok, %Token{value: t}} = Session.calculate_token(session, ps, values)
+                 iex> %Token{value: t} = Session.calculate_token(session, ps, values)
                  iex> true = is_integer(t)
                  """
 

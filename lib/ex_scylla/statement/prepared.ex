@@ -115,6 +115,7 @@ defmodule ExScylla.Statement.Prepared do
            example_setup: :ps_setup,
            doc_example: """
            iex> local_serial = Prepared.get_serial_consistency(ps)
+           iex> true = is_atom(local_serial)
            """
 
   native_f func: :get_statement,

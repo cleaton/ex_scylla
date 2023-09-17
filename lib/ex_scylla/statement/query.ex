@@ -62,7 +62,7 @@ defmodule ExScylla.Statement.Query do
            return_spec: T.serial_consistency() | nil,
            doc_example: """
            iex> q = Query.new("SELECT * FROM test;")
-           iex> :local_serial = Query.get_serial_consistency(q)
+           iex> nil = Query.get_serial_consistency(q)
            iex> q = Query.set_serial_consistency(q, :serial)
            iex> :serial = Query.get_serial_consistency(q)
            """

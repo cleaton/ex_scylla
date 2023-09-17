@@ -2,11 +2,11 @@ defmodule ExScylla.Types.Errors.QueryError do
   alias ExScylla.Types.Errors.DbError
   alias ExScylla.Types.Errors.BadQuery
   alias ExScylla.Types.Errors.TranslationError
-  use ExScylla.Macros.Native
+  alias ExScylla.Macros.Native
   @type msg :: String.t()
   @typedoc """
     For more details, see:
-      https://docs.rs/scylla/#{@scylla_version}/scylla/transport/errors/enum.QueryError.html
+      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/transport/errors/enum.QueryError.html
   """
   @type t :: {:db_error, DbError.t()}
            | {:bad_query, BadQuery.t()}

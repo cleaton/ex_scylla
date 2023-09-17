@@ -5,11 +5,11 @@ use std::sync::MutexGuard;
 use std::time::Duration;
 
 use rustler::ResourceArc;
+use scylla::load_balancing::DefaultPolicy;
 use scylla::load_balancing::LoadBalancingPolicy;
-use scylla::load_balancing::{DefaultPolicy, DefaultPolicyBuilder, LatencyAwarenessBuilder};
+use scylla::load_balancing::{DefaultPolicyBuilder, LatencyAwarenessBuilder};
 
 pub struct DefaultPolicyBuilderResource(pub Mutex<Cell<DefaultPolicyBuilder>>);
-pub struct DefaultPolicyResource(pub DefaultPolicy);
 pub struct LatencyAwarenessPolicyBuilderResource(pub Mutex<Cell<LatencyAwarenessBuilder>>);
 pub struct LoadBalancingPolicyResource(pub Arc<dyn LoadBalancingPolicy>);
 
@@ -175,5 +175,10 @@ fn lab_update_rate(
         lab.update_rate(Duration::from_millis(update_rate_ms))
     });
     labr
+}
+
+#[rustler::nif]
+fn dp_default() -> ResourceArc<LoadBalancingPolicyResource> {
+    ResourceArc::new(LoadBalancingPolicyResource(Arc::new(DefaultPolicy::default())))
 }
 

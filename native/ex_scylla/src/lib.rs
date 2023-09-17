@@ -23,7 +23,6 @@ rustler::init!(
         // GenericSessionBuilder
         session_builder::sb_default_execution_profile_handle,
         //session_builder::sb_host_filter,
-        //session_builder::sb_load_balancing,
         //session_builder::sb_address_translator,
         //session_builder::sb_authenticator_provider,
         //session_builder::sb_ssl_context,
@@ -197,6 +196,8 @@ rustler::init!(
         // ExecutionProfileHandle
         execution_profile_handle::eph_map_to_another_profile,
         execution_profile_handle::eph_pointee_to_builder,
+        // DefaultPolicy
+        load_balancing::dp_default,
         // DefaultPolicyBuilder
         load_balancing::dpb_build,
         load_balancing::dpb_enable_shuffling_replicas,
@@ -234,7 +235,6 @@ fn load(env: rustler::Env, _: rustler::Term) -> bool {
     );
     rustler::resource!(settings::execution_profile::ExecutionProfileResource, env);
     rustler::resource!(settings::load_balancing::DefaultPolicyBuilderResource, env);
-    rustler::resource!(settings::load_balancing::DefaultPolicyResource, env);
     rustler::resource!(
         settings::load_balancing::LatencyAwarenessPolicyBuilderResource,
         env

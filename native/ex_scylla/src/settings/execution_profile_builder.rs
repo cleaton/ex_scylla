@@ -2,11 +2,10 @@ use crate::settings::speculative_execution::ScyllaSpeculativeExecutionPolicy;
 use crate::types::*;
 use rustler::ResourceArc;
 use scylla::execution_profile::ExecutionProfileBuilder;
-use scylla::speculative_execution::SpeculativeExecutionPolicy;
 use scylla::statement::SerialConsistency;
 use std::cell::Cell;
 use std::ops::Deref;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
 use super::execution_profile::ExecutionProfileResource;

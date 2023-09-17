@@ -11,8 +11,11 @@ defmodule ExScylla.SessionBuilder do
          args_spec: [T.session_builder(), T.execution_profile_handle()],
          return_spec: T.session_builder(),
          doc_example: """
+         iex> ep = ExecutionProfileBuilder.new()
+         ...>       |> ExecutionProfileBuilder.request_timeout(5_000)
+         ...>       |> ExecutionProfileBuilder.build()
          iex> sb = SessionBuilder.new()
-         iex> sb = SessionBuilder.autoema_agreement_timeout(sb, 5_000)
+         iex> sb = SessionBuilder.default_execution_profile_handle(sb, ExecutionProfile.into_handle(ep))
          iex> true = is_reference(sb)
          """
 
@@ -222,6 +225,37 @@ defmodule ExScylla.SessionBuilder do
            iex> true = is_reference(sb)
            """
 
+  native_f func: :tracing_info_fetch_attempts,
+           args: [sb, attempts],
+           args_spec: [T.session_builder(), non_neg_integer()],
+           return_spec: T.session_builder(),
+           doc_example: """
+           iex> sb = SessionBuilder.new()
+           iex> sb = SessionBuilder.tracing_info_fetch_attempts(sb, 5)
+           iex> true = is_reference(sb)
+           """
+
+  native_f func: :tracing_info_fetch_consistency,
+           args: [sb, consistency],
+           args_spec: [T.session_builder(), T.consistency()],
+           return_spec: T.session_builder(),
+           doc_example: """
+           iex> sb = SessionBuilder.new()
+           iex> sb = SessionBuilder.tracing_info_fetch_consistency(sb, :quorum)
+           iex> true = is_reference(sb)
+           """
+
+  native_f func: :tracing_info_fetch_interval,
+           args: [sb, interval_ms],
+           args_spec: [T.session_builder(), non_neg_integer()],
+           return_spec: T.session_builder(),
+           doc_example: """
+           iex> interval_ms = 15000
+           iex> sb = SessionBuilder.new()
+           iex> sb = SessionBuilder.tracing_info_fetch_interval(sb, interval_ms)
+           iex> true = is_reference(sb)
+           """
+
   native_f func: :user,
            args: [sb, username, passwd],
            args_spec: [T.session_builder(), String.t(), String.t()],
@@ -230,6 +264,16 @@ defmodule ExScylla.SessionBuilder do
            iex> sb = SessionBuilder.new()
            iex> {username, passwd} = {"user", "myS3cr3tp@ssw0rd"}
            iex> sb = SessionBuilder.user(sb, username, passwd)
+           iex> true = is_reference(sb)
+           """
+
+  native_f func: :write_coalescing,
+           args: [sb, enable],
+           args_spec: [T.session_builder(), boolean()],
+           return_spec: T.session_builder(),
+           doc_example: """
+           iex> sb = SessionBuilder.new()
+           iex> sb = SessionBuilder.write_coalescing(sb, true)
            iex> true = is_reference(sb)
            """
 end

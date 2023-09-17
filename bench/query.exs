@@ -4,6 +4,8 @@ q = "SELECT col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, 
 args = Enum.map(1..100, fn i -> "hello#{i}" end)
 keyspace = "load_test_erlcass"
 Application.ensure_all_started(:erlcass)
+
+# CREATE KEYSPACE load_test_erlcass WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 1};
 #### SETUP
 #CREATE TABLE IF NOT EXISTS load_test_erlcass.test_table(
 #col1 ascii,
