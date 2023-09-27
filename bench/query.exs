@@ -117,6 +117,6 @@ Benchee.run(
     #"Large" => Enum.to_list(1..100_000)
   },
   time: 10,
-  parallel: 5000
+  parallel: 5
   #profile_after: {:fprof, []}
 )

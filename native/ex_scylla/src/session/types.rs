@@ -162,7 +162,8 @@ pub struct ScyllaQueryResult {
     pub warnings: Vec<String>,
     pub tracing_id: Option<ScyllaBinary>,
     pub paging_state: Option<ScyllaBinary>,
-    pub col_specs: Option<Vec<ScyllaColumnSpec>>,
+    //pub col_specs: Option<Vec<ScyllaColumnSpec>>,
+    pub serialized_size: usize,
 }
 
 to_elixir!(QueryResult, ScyllaQueryResult, |qr: QueryResult| {
@@ -173,7 +174,9 @@ to_elixir!(QueryResult, ScyllaQueryResult, |qr: QueryResult| {
         warnings: qr.warnings,
         tracing_id: qr.tracing_id.map(|b| b.into()),
         paging_state: qr.paging_state.map(|b| b.into()),
-        col_specs: Some(qr.col_specs.into_iter().map(|x| x.ex()).collect()),
+        // colspecs has a huge overhead for each query, this probably needs to be cached in order to be performant.
+        //col_specs: Some(qr.col_specs.into_iter().map(|x| x.ex()).collect()),
+        serialized_size: qr.serialized_size
     }
 });
 
