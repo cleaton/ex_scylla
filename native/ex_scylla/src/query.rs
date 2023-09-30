@@ -1,10 +1,24 @@
 pub mod types;
 use crate::consts::*;
+use crate::settings::execution_profile_handle::ExecutionProfileHandleResource;
 use crate::types::*;
 use crate::utils::*;
 use rustler::{Atom, ResourceArc};
 use scylla::query::Query;
 use types::*;
+
+#[rustler::nif]
+fn q_get_execution_profile_handle(qr: ResourceArc<QueryResource>) -> Option<ResourceArc<ExecutionProfileHandleResource>> {
+    let q: &Query = &qr.0;
+    q.get_execution_profile_handle().map(|h| ResourceArc::new(ExecutionProfileHandleResource(h.clone())))
+}
+
+#[rustler::nif]
+fn q_set_execution_profile_handle(q: ResourceArc<QueryResource>, profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>) -> ResourceArc<QueryResource> {
+    let mut q: Query = q.0.to_owned();
+    q.set_execution_profile_handle(profile_handle.map(|ephr| ephr.0.clone()));
+    q.ex()
+}
 
 #[rustler::nif]
 fn q_disable_paging(q: ResourceArc<QueryResource>) -> ResourceArc<QueryResource> {

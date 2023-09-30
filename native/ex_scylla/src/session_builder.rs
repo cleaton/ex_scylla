@@ -32,11 +32,8 @@ fn sb_default_execution_profile_handle(
     sbr: ResourceArc<SessionBuilderResource>,
     ephr: ResourceArc<ExecutionProfileHandleResource>
 ) -> ResourceArc<SessionBuilderResource> {
-    let mutex: &Mutex<Cell<ExecutionProfileHandle>> = &ephr.0;
-    let mut guard = mutex.lock().unwrap();
-    let eph: ExecutionProfileHandle = guard.get_mut().clone();
-    drop(guard);
-    use_builder!(sbr, |sb: SessionBuilder| { sb.default_execution_profile_handle(eph) });
+    let eph: &ExecutionProfileHandle = &ephr.0;
+    use_builder!(sbr, |sb: SessionBuilder| { sb.default_execution_profile_handle(eph.clone()) });
     sbr
 }
 

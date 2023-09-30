@@ -105,10 +105,10 @@ rustler::init!(
         session::s_refresh_metadata,
         session::s_use_keyspace,
         //Query
-        //query::q_get_execution_profile_handle,
+        query::q_get_execution_profile_handle,
         //query::q_get_request_timeout,
         //query::q_remove_history_listener,
-        //query::q_set_execution_profile_handle,
+        query::q_set_execution_profile_handle,
         //query::q_set_history_listener,
         //query::q_set_request_timeout,
         query::q_disable_paging,

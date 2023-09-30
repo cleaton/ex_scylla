@@ -27,7 +27,7 @@ defmodule ExScylla.Execution.ExecutionProfile do
     iex> eph = ExecutionProfile.builder()
     ...>          |> ExecutionProfileBuilder.build()
     ...>          |> ExecutionProfile.into_handle_with_label("my_label")
-    iex> true = is_reference(ep)
+    iex> true = is_reference(eph)
     """
   )
 

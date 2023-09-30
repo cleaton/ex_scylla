@@ -2,7 +2,7 @@ defmodule ExScylla.Native do
   use Rustler,
       otp_app: :ex_scylla,
       crate: "ex_scylla",
-      env: if Mix.env() == :test, do: [{"LLVM_PROFILE_FILE", "instrument_coverage.profraw"}, {"RUSTFLAGS", "-C instrument-coverage"}], else: []
+      env: if( Mix.env() == :test, do: [{"LLVM_PROFILE_FILE", "instrument_coverage.profraw"}, {"RUSTFLAGS", "-C instrument-coverage"}], else: [])
 
       # SessionBuilder
       def sb_default_execution_profile_handle(_sbr, _ephr), do: e()
@@ -62,10 +62,10 @@ defmodule ExScylla.Native do
       def s_refresh_metadata(_opaque, _session), do: e()
       def s_use_keyspace(_opaque, _session, _keyspace_name, _case_sensitive), do: e()
       # Query
-      # //query::q_get_execution_profile_handle,
+      def q_get_execution_profile_handle(_q), do: e()
       # //query::q_get_request_timeout,
       # //query::q_remove_history_listener,
-      # //query::q_set_execution_profile_handle,
+      def q_set_execution_profile_handle(_q, _profile_handle), do: e()
       # //query::q_set_history_listener,
       # //query::q_set_request_timeout,
       def q_disable_paging(_q), do: e()

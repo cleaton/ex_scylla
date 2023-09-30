@@ -1,7 +1,6 @@
 defmodule ExScylla.Execution.ExecutionProfileBuilder do
   alias ExScylla.Types, as: T
   alias ExScylla.Execution.ExecutionProfile
-  alias ExScylla.LoadBalancing.DefaultPolicy
 
   use ExScylla.Macros.Native,
     prefix: :epb,
@@ -28,7 +27,7 @@ defmodule ExScylla.Execution.ExecutionProfileBuilder do
     args_spec: [T.execution_profile_builder(), T.consistency()],
     return_spec: T.execution_profile_builder(),
     doc_example: """
-    iex> {:ok, ep} = ExecutionProfileBuilder.new()
+    iex> ep = ExecutionProfileBuilder.new()
     ...>          |> ExecutionProfileBuilder.consistency(:local_quorum)
     ...>          |> ExecutionProfileBuilder.build()
     iex> true = is_reference(ep)
@@ -41,7 +40,7 @@ defmodule ExScylla.Execution.ExecutionProfileBuilder do
     args_spec: [T.execution_profile_builder(), T.load_balancing_policy()],
     return_spec: T.execution_profile_builder(),
     doc_example: """
-    iex> {:ok, ep} = ExecutionProfileBuilder.new()
+    iex> ep = ExecutionProfileBuilder.new()
     ...>          |> ExecutionProfileBuilder.load_balancing_policy(DefaultPolicy.default())
     ...>          |> ExecutionProfileBuilder.build()
     iex> true = is_reference(ep)
@@ -54,7 +53,7 @@ defmodule ExScylla.Execution.ExecutionProfileBuilder do
     args_spec: [T.execution_profile_builder(), pos_integer()],
     return_spec: T.execution_profile_builder(),
     doc_example: """
-    iex> {:ok, ep} = ExecutionProfileBuilder.new()
+    iex> ep = ExecutionProfileBuilder.new()
     ...>          |> ExecutionProfileBuilder.request_timeout(5_000)
     ...>          |> ExecutionProfileBuilder.build()
     iex> true = is_reference(ep)
@@ -67,8 +66,8 @@ defmodule ExScylla.Execution.ExecutionProfileBuilder do
     args_spec: [T.execution_profile_builder(), T.retry_policy()],
     return_spec: T.execution_profile_builder(),
     doc_example: """
-    iex> {:ok, ep} = ExecutionProfileBuilder.new()
-    ...>          |> ExecutionProfileBuilder.retry_policy(:default)
+    iex> ep = ExecutionProfileBuilder.new()
+    ...>          |> ExecutionProfileBuilder.retry_policy(:default_retry_policy)
     ...>          |> ExecutionProfileBuilder.build()
     iex> true = is_reference(ep)
     """
@@ -80,7 +79,7 @@ defmodule ExScylla.Execution.ExecutionProfileBuilder do
     args_spec: [T.execution_profile_builder(), T.serial_consistency()],
     return_spec: T.execution_profile_builder(),
     doc_example: """
-    iex> {:ok, ep} = ExecutionProfileBuilder.new()
+    iex> ep = ExecutionProfileBuilder.new()
     ...>          |> ExecutionProfileBuilder.serial_consistency(:local_serial)
     ...>          |> ExecutionProfileBuilder.build()
     iex> true = is_reference(ep)
@@ -93,8 +92,8 @@ defmodule ExScylla.Execution.ExecutionProfileBuilder do
     args_spec: [T.execution_profile_builder(), T.speculative_execution_policy()],
     return_spec: T.execution_profile_builder(),
     doc_example: """
-    iex> {:ok, ep} = ExecutionProfileBuilder.new()
-    ...>          |> ExecutionProfileBuilder.speculative_execution_policy(:constant)
+    iex> ep = ExecutionProfileBuilder.new()
+    ...>          |> ExecutionProfileBuilder.speculative_execution_policy(%PercentileSpeculativeExecutionPolicy{max_retry_count: 3, percentile: 0.95})
     ...>          |> ExecutionProfileBuilder.build()
     iex> true = is_reference(ep)
     """
