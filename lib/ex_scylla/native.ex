@@ -2,7 +2,7 @@ defmodule ExScylla.Native do
   use Rustler,
       otp_app: :ex_scylla,
       crate: "ex_scylla",
-      env: if Mix.env() == :test, do: [{"RUSTFLAGS", "-C instrument-coverage"}], else: []
+      env: if Mix.env() == :test, do: [{"LLVM_PROFILE_FILE", "instrument_coverage.profraw"}, {"RUSTFLAGS", "-C instrument-coverage"}], else: []
 
       # SessionBuilder
       def sb_default_execution_profile_handle(_sbr, _ephr), do: e()

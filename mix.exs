@@ -10,10 +10,38 @@ defmodule ExScylla.MixProject do
       test_coverage: [tool: LcovEx, output: "cover"],
       deps: deps(),
       description: description(),
-      package: package()
+      package: package(),
+      aliases: aliases(),
     ]
   end
 
+  defp aliases do
+    [
+      test: &run_test/1,
+      "test.wrapper": &run_test_wrapper/1
+    ]
+  end
+
+  defp run_test(args) do
+    args = if IO.ANSI.enabled?(), do: ["--color" | args], else: ["--no-color" | args]
+
+    {_, res} =
+      System.cmd("mix", ["test.wrapper" | args],
+        into: IO.binstream(:stdio, :line),
+        env: [
+          {"LLVM_PROFILE_FILE", "instrument_coverage.profraw"},
+          {"MIX_ENV", to_string(Mix.env())}
+        ]
+      )
+
+    if res > 0 do
+      System.at_exit(fn _ -> exit({:shutdown, 1}) end)
+    end
+  end
+
+  defp run_test_wrapper(args) do
+    Mix.Tasks.Test.run(args)
+  end
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
