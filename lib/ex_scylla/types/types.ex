@@ -9,6 +9,7 @@ defmodule ExScylla.Types do
 
   @type batch :: reference()
   @type ts_micros :: integer()
+  @type duration_ms :: non_neg_integer()
   @type query :: reference()
   @type session :: reference()
   @type execution_profile_handle :: reference()

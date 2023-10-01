@@ -6,14 +6,14 @@ mod query;
 pub mod runtime;
 mod session;
 mod session_builder;
-mod settings;
+mod execution;
 pub mod types;
 pub mod utils;
 use std::option::Option::Some;
-use settings::execution_profile;
-use settings::execution_profile_builder;
-use settings::execution_profile_handle;
-use settings::load_balancing;
+use execution::execution_profile;
+use execution::execution_profile_builder;
+use execution::execution_profile_handle;
+use execution::load_balancing;
 
 // Setup
 rustler::init!(
@@ -106,11 +106,11 @@ rustler::init!(
         session::s_use_keyspace,
         //Query
         query::q_get_execution_profile_handle,
-        //query::q_get_request_timeout,
+        query::q_get_request_timeout,
         //query::q_remove_history_listener,
         query::q_set_execution_profile_handle,
         //query::q_set_history_listener,
-        //query::q_set_request_timeout,
+        query::q_set_request_timeout,
         query::q_disable_paging,
         query::q_get_consistency,
         query::q_get_is_idempotent,
@@ -226,19 +226,19 @@ fn load(env: rustler::Env, _: rustler::Term) -> bool {
     rustler::resource!(prepared_statement::types::PreparedStatementResource, env);
     rustler::resource!(query::types::QueryResource, env);
     rustler::resource!(
-        settings::execution_profile_builder::ExecutionProfileBuilderResource,
+        execution::execution_profile_builder::ExecutionProfileBuilderResource,
         env
     );
     rustler::resource!(
-        settings::execution_profile_handle::ExecutionProfileHandleResource,
+        execution::execution_profile_handle::ExecutionProfileHandleResource,
         env
     );
-    rustler::resource!(settings::execution_profile::ExecutionProfileResource, env);
-    rustler::resource!(settings::load_balancing::DefaultPolicyBuilderResource, env);
+    rustler::resource!(execution::execution_profile::ExecutionProfileResource, env);
+    rustler::resource!(execution::load_balancing::DefaultPolicyBuilderResource, env);
     rustler::resource!(
-        settings::load_balancing::LatencyAwarenessPolicyBuilderResource,
+        execution::load_balancing::LatencyAwarenessPolicyBuilderResource,
         env
     );
-    rustler::resource!(settings::load_balancing::LoadBalancingPolicyResource, env);
+    rustler::resource!(execution::load_balancing::LoadBalancingPolicyResource, env);
     true
 }

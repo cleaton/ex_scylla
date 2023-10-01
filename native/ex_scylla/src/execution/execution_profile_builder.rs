@@ -1,4 +1,4 @@
-use crate::settings::speculative_execution::ScyllaSpeculativeExecutionPolicy;
+
 use crate::types::*;
 use rustler::ResourceArc;
 use scylla::execution_profile::ExecutionProfileBuilder;
@@ -8,6 +8,7 @@ use std::ops::Deref;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
+use super::speculative_execution::ScyllaSpeculativeExecutionPolicy;
 use super::execution_profile::ExecutionProfileResource;
 use super::load_balancing::LoadBalancingPolicyResource;
 use super::retry_policy::ScyllaRetryPolicy;

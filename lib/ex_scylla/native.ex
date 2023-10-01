@@ -63,11 +63,11 @@ defmodule ExScylla.Native do
       def s_use_keyspace(_opaque, _session, _keyspace_name, _case_sensitive), do: e()
       # Query
       def q_get_execution_profile_handle(_q), do: e()
-      # //query::q_get_request_timeout,
+      def q_get_request_timeout(_q), do: e()
       # //query::q_remove_history_listener,
       def q_set_execution_profile_handle(_q, _profile_handle), do: e()
       # //query::q_set_history_listener,
-      # //query::q_set_request_timeout,
+      def q_set_request_timeout(_q, _timeout_ms), do: e()
       def q_disable_paging(_q), do: e()
       def q_get_consistency(_q), do: e()
       def q_get_is_idempotent(_q), do: e()
