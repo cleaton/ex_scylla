@@ -4,6 +4,58 @@ defmodule ExScylla.Statement.Query do
                           prefix: :q,
                           docs_rs_path: "/scylla/statement/query/struct.Query.html"
                         ]
+
+  native_f func: :get_execution_profile_handle,
+            args: [q],
+            args_spec: [T.query()],
+            return_spec: T.execution_profile_handle() | nil,
+            doc_example: """
+            iex> eph = ExecutionProfile.builder()
+            ...>          |> ExecutionProfileBuilder.build()
+            ...>          |> ExecutionProfile.into_handle()
+            iex> q = Query.new("SELECT * FROM test;")
+            ...>   |> Query.set_execution_profile_handle(eph)
+            iex> q |> Query.get_execution_profile_handle()
+            ...>   |> is_reference()
+            true
+            """
+
+  native_f func: :set_execution_profile_handle,
+            args: [q, profile_handle],
+            args_spec: [T.query(), T.execution_profile_handle() | nil],
+            return_spec: T.query(),
+            doc_example: """
+            iex> eph = ExecutionProfile.builder()
+            ...>          |> ExecutionProfileBuilder.build()
+            ...>          |> ExecutionProfile.into_handle()
+            iex> Query.new("SELECT * FROM test;")
+            ...>   |> Query.set_execution_profile_handle(eph)
+            ...>   |> is_reference()
+            true
+            """
+
+  native_f func: :get_request_timeout,
+            args: [q],
+            args_spec: [T.query()],
+            return_spec: T.duration_ms() | nil,
+            doc_example: """
+            iex> q = Query.new("SELECT * FROM test;")
+            ...>   |> Query.set_request_timeout(15000)
+            iex> q |> Query.get_request_timeout()
+            15000
+            """
+
+  native_f func: :set_request_timeout,
+            args: [q, timeout_ms],
+            args_spec: [T.query(), T.duration_ms() | nil],
+            return_spec: T.query(),
+            doc_example: """
+            iex> q = Query.new("SELECT * FROM test;")
+            ...>   |> Query.set_request_timeout(15000)
+            iex> q |> Query.get_request_timeout()
+            15000
+            """
+
   native_f func: :disable_paging,
            args: [q],
            args_spec: [T.query()],
@@ -62,7 +114,7 @@ defmodule ExScylla.Statement.Query do
            return_spec: T.serial_consistency() | nil,
            doc_example: """
            iex> q = Query.new("SELECT * FROM test;")
-           iex> :local_serial = Query.get_serial_consistency(q)
+           iex> nil = Query.get_serial_consistency(q)
            iex> q = Query.set_serial_consistency(q, :serial)
            iex> :serial = Query.get_serial_consistency(q)
            """

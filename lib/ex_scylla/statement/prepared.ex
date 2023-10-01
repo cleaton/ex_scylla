@@ -25,6 +25,67 @@ defmodule ExScylla.Statement.Prepared do
            iex> true = is_binary(p_key)
            """
 
+native_f func: :get_execution_profile_handle,
+           args: [ps],
+           args_spec: [T.prepared_statement()],
+           return_spec: T.execution_profile_handle() | nil,
+           example_setup: :ps_setup,
+           doc_example: """
+           iex> eph = ExecutionProfile.builder()
+           ...>          |> ExecutionProfileBuilder.build()
+           ...>          |> ExecutionProfile.into_handle()
+           iex> ps |> Prepared.set_execution_profile_handle(eph)
+           ...>    |> Prepared.get_execution_profile_handle()
+           ...>    |> is_reference()
+           true
+           """
+
+ native_f func: :set_execution_profile_handle,
+           args: [ps, profile_handle],
+           args_spec: [T.prepared_statement(), T.execution_profile_handle() | nil],
+           return_spec: T.prepared_statement(),
+           example_setup: :ps_setup,
+           doc_example: """
+           iex> eph = ExecutionProfile.builder()
+           ...>          |> ExecutionProfileBuilder.build()
+           ...>          |> ExecutionProfile.into_handle()
+           iex> ps |> Prepared.set_execution_profile_handle(eph)
+           ...>    |> is_reference()
+           true
+           """
+
+ native_f func: :get_request_timeout,
+           args: [ps],
+           args_spec: [T.prepared_statement()],
+           return_spec: T.duration_ms() | nil,
+           example_setup: :ps_setup,
+           doc_example: """
+           iex> ps |> Prepared.set_request_timeout(15000)
+           ...>    |> Prepared.get_request_timeout()
+           15000
+           """
+
+ native_f func: :set_request_timeout,
+           args: [ps, timeout_ms],
+           args_spec: [T.prepared_statement(), T.duration_ms() | nil],
+           return_spec: T.prepared_statement(),
+           example_setup: :ps_setup,
+           doc_example: """
+           iex> ps |> Prepared.set_request_timeout(15000)
+           ...>    |> Prepared.get_request_timeout()
+           15000
+           """
+
+  native_f func: :is_confirmed_lwt,
+           args: [ps],
+           args_spec: [T.prepared_statement()],
+           return_spec: boolean(),
+           example_setup: :ps_setup,
+           doc_example: """
+           iex> ps |> Prepared.is_confirmed_lwt()
+           false
+           """
+
   native_f func: :disable_paging,
            args: [ps],
            args_spec: [T.prepared_statement()],
@@ -115,6 +176,7 @@ defmodule ExScylla.Statement.Prepared do
            example_setup: :ps_setup,
            doc_example: """
            iex> local_serial = Prepared.get_serial_consistency(ps)
+           iex> true = is_atom(local_serial)
            """
 
   native_f func: :get_statement,

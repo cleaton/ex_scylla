@@ -15,6 +15,36 @@ defmodule ExScylla.Statement.Batch do
            true
            """
 
+  native_f func: :get_execution_profile_handle,
+           args: [batch],
+           args_spec: [T.batch()],
+           return_spec: T.execution_profile_handle() | nil,
+           doc_example: """
+           iex> eph = ExecutionProfile.builder()
+           ...>          |> ExecutionProfileBuilder.build()
+           ...>          |> ExecutionProfile.into_handle()
+           iex> b = Batch.new(:unlogged)
+           ...>   |> Batch.set_execution_profile_handle(eph)
+           iex> b |> Batch.get_execution_profile_handle()
+           ...>   |> is_reference()
+           true
+           """
+
+ native_f func: :set_execution_profile_handle,
+           args: [batch, profile_handle],
+           args_spec: [T.batch(), T.execution_profile_handle() | nil],
+           return_spec: T.batch(),
+           doc_example: """
+           iex> eph = ExecutionProfile.builder()
+           ...>          |> ExecutionProfileBuilder.build()
+           ...>          |> ExecutionProfile.into_handle()
+           iex> b = Batch.new(:unlogged)
+           ...>   |> Batch.set_execution_profile_handle(eph)
+           iex> b |> Batch.get_execution_profile_handle()
+           ...>   |> is_reference()
+           true
+           """
+
   native_f func: :get_consistency,
            args: [batch],
            args_spec: [T.batch()],
@@ -50,6 +80,7 @@ defmodule ExScylla.Statement.Batch do
            return_spec: T.serial_consistency() | nil,
            doc_example: """
            iex> batch = Batch.new(:unlogged)
+           ...>          |> Batch.set_serial_consistency(:local_serial)
            iex> :local_serial = Batch.get_serial_consistency(batch)
            """
 

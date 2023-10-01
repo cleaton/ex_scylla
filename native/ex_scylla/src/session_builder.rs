@@ -1,11 +1,15 @@
 pub mod types;
 use rustler::env::{OwnedEnv, SavedTerm};
+use scylla::execution_profile::ExecutionProfileHandle;
 //use consistency::Consistency;
 use super::runtime;
+use crate::execution::execution_profile_handle::ExecutionProfileHandleResource;
+use crate::execution::pool_size::ScyllaPoolSize;
 use rustler::types::atom;
 use rustler::{Atom, Encoder, Env, NifResult, ResourceArc, Term};
 use scylla::SessionBuilder;
 use std::net::SocketAddr;
+use std::num::NonZeroU32;
 use std::sync::Mutex;
 use std::time::Duration;
 //use rustler::types::LocalPid;
@@ -23,6 +27,24 @@ macro_rules! use_builder {
 }
 
 // SesisonBuilder methods
+#[rustler::nif]
+fn sb_default_execution_profile_handle(
+    sbr: ResourceArc<SessionBuilderResource>,
+    ephr: ResourceArc<ExecutionProfileHandleResource>
+) -> ResourceArc<SessionBuilderResource> {
+    let eph: &ExecutionProfileHandle = &ephr.0;
+    use_builder!(sbr, |sb: SessionBuilder| { sb.default_execution_profile_handle(eph.clone()) });
+    sbr
+}
+
+#[rustler::nif]
+fn sb_write_coalescing(
+    sbr: ResourceArc<SessionBuilderResource>,
+    enable: bool,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| { sb.write_coalescing(enable) });
+    sbr
+}
 
 #[rustler::nif]
 fn sb_auto_schema_agreement_timeout(
@@ -71,16 +93,19 @@ fn sb_connection_timeout(
     sbr
 }
 
+/*
 #[rustler::nif]
-fn sb_default_consistency(
+fn sb_default_execution_profile_handle(
     sbr: ResourceArc<SessionBuilderResource>,
-    consistency: ScyllaConsistency,
+    profile_handle: ExecutionProfileHandle,
 ) -> ResourceArc<SessionBuilderResource> {
     use_builder!(sbr, |sb: SessionBuilder| {
-        sb.default_consistency(consistency.into())
+        sb.default_execution_profile_handle(profile_handle)
     });
     sbr
 }
+*/
+
 #[rustler::nif]
 fn sb_disallow_shard_aware_port(
     sbr: ResourceArc<SessionBuilderResource>,
@@ -102,6 +127,17 @@ fn sb_fetch_schema_metadata(
     sbr
 }
 
+/*
+#[rustler::nif]
+fn sb_host_filter(
+    sbr: ResourceArc<SessionBuilderResource>,
+    filter: Arc<dyn HostFilter>,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| { sb.host_filter(filter) });
+    sbr
+}
+ */
+
 #[rustler::nif]
 fn sb_keepalive_interval(
     sbr: ResourceArc<SessionBuilderResource>,
@@ -109,6 +145,28 @@ fn sb_keepalive_interval(
 ) -> ResourceArc<SessionBuilderResource> {
     use_builder!(sbr, |sb: SessionBuilder| {
         sb.keepalive_interval(Duration::from_millis(interval_ms))
+    });
+    sbr
+}
+
+#[rustler::nif]
+fn sb_keepalive_timeout(
+    sbr: ResourceArc<SessionBuilderResource>,
+    timeout_ms: u64,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| {
+        sb.keepalive_timeout(Duration::from_millis(timeout_ms))
+    });
+    sbr
+}
+
+#[rustler::nif]
+fn sb_keyspaces_to_fetch(
+    sbr: ResourceArc<SessionBuilderResource>,
+    keyspaces: Vec<String>,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| {
+        sb.keyspaces_to_fetch(keyspaces)
     });
     sbr
 }
@@ -156,6 +214,7 @@ fn sb_known_nodes_addr(
     sbr
 }
 
+/*
 #[rustler::nif]
 fn sb_load_balancing(
     sbr: ResourceArc<SessionBuilderResource>,
@@ -164,6 +223,8 @@ fn sb_load_balancing(
     use_builder!(sbr, |sb: SessionBuilder| { sb.load_balancing(policy.r()) });
     sbr
 }
+*/
+
 #[rustler::nif]
 fn sb_new() -> ResourceArc<SessionBuilderResource> {
     ResourceArc::new(SessionBuilderResource(Mutex::new(Cell::new(
@@ -182,17 +243,17 @@ fn sb_pool_size(
     sbr: ResourceArc<SessionBuilderResource>,
     size: ScyllaPoolSize,
 ) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| { sb.pool_size(size.r()) });
+    use_builder!(sbr, |sb: SessionBuilder| { sb.pool_size(size.into()) });
     sbr
 }
 
 #[rustler::nif]
-fn sb_retry_policy(
+fn sb_refresh_metadata_on_auto_schema_agreement(
     sbr: ResourceArc<SessionBuilderResource>,
-    retry_policy: ScyllaRetryPolicy,
+    refresh_metadata: bool,
 ) -> ResourceArc<SessionBuilderResource> {
     use_builder!(sbr, |sb: SessionBuilder| {
-        sb.retry_policy(retry_policy.r())
+        sb.refresh_metadata_on_auto_schema_agreement(refresh_metadata)
     });
     sbr
 }
@@ -209,12 +270,12 @@ fn sb_schema_agreement_interval(
 }
 
 #[rustler::nif]
-fn sb_speculative_execution(
+fn sb_tcp_keepalive_interval(
     sbr: ResourceArc<SessionBuilderResource>,
-    policy: ScyllaSpeculativeExecutionPolicy,
+    interval_ms: u64,
 ) -> ResourceArc<SessionBuilderResource> {
     use_builder!(sbr, |sb: SessionBuilder| {
-        sb.speculative_execution(policy.r())
+        sb.tcp_keepalive_interval(Duration::from_millis(interval_ms))
     });
     sbr
 }
@@ -228,6 +289,38 @@ fn sb_tcp_nodelay(
     sbr
 }
 
+#[rustler::nif]
+fn sb_tracing_info_fetch_attempts(
+    sbr: ResourceArc<SessionBuilderResource>,
+    attempts: u32,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| {
+        sb.tracing_info_fetch_attempts(NonZeroU32::new(attempts).expect("attemts can not be 0"))
+    });
+    sbr
+}
+
+#[rustler::nif]
+fn sb_tracing_info_fetch_consistency(
+    sbr: ResourceArc<SessionBuilderResource>,
+    consistency: ScyllaConsistency,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| {
+        sb.tracing_info_fetch_consistency(consistency.into())
+    });
+    sbr
+}
+
+#[rustler::nif]
+fn sb_tracing_info_fetch_interval(
+    sbr: ResourceArc<SessionBuilderResource>,
+    interval_ms: u64,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| {
+        sb.tracing_info_fetch_interval(Duration::from_millis(interval_ms))
+    });
+    sbr
+}
 #[rustler::nif]
 fn sb_use_keyspace(
     sbr: ResourceArc<SessionBuilderResource>,

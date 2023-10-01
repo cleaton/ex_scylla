@@ -6,6 +6,19 @@ defmodule ExScylla.SessionBuilder do
                           docs_rs_path: "/scylla/transport/session_builder/struct.SessionBuilder.html"
                         ]
 
+  native_f func: :default_execution_profile_handle,
+         args: [sb, eph],
+         args_spec: [T.session_builder(), T.execution_profile_handle()],
+         return_spec: T.session_builder(),
+         doc_example: """
+         iex> ep = ExecutionProfileBuilder.new()
+         ...>       |> ExecutionProfileBuilder.request_timeout(5_000)
+         ...>       |> ExecutionProfileBuilder.build()
+         iex> sb = SessionBuilder.new()
+         iex> sb = SessionBuilder.default_execution_profile_handle(sb, ExecutionProfile.into_handle(ep))
+         iex> true = is_reference(sb)
+         """
+
   native_f func: :auto_schema_agreement_timeout,
            args: [sb, timeout_ms],
            args_spec: [T.session_builder(), pos_integer()],
@@ -48,16 +61,6 @@ defmodule ExScylla.SessionBuilder do
            iex> true = is_reference(sb)
            """
 
-  native_f func: :default_consistency,
-           args: [sb, consistency],
-           args_spec: [T.session_builder(), T.consistency()],
-           return_spec: T.session_builder(),
-           doc_example: """
-           iex> sb = SessionBuilder.new()
-           iex> sb = SessionBuilder.default_consistency(sb, :quorum)
-           iex> true = is_reference(sb)
-           """
-
   native_f func: :disallow_shard_aware_port,
            args: [sb, disallow],
            args_spec: [T.session_builder(), boolean()],
@@ -86,6 +89,26 @@ defmodule ExScylla.SessionBuilder do
            doc_example: """
            iex> sb = SessionBuilder.new()
            iex> sb = SessionBuilder.keepalive_interval(sb, 5_000)
+           iex> true = is_reference(sb)
+           """
+
+  native_f func: :keepalive_timeout,
+           args: [sb, timeout_ms],
+           args_spec: [T.session_builder(), pos_integer()],
+           return_spec: T.session_builder(),
+           doc_example: """
+           iex> sb = SessionBuilder.new()
+           iex> sb = SessionBuilder.keepalive_timeout(sb, 5_000)
+           iex> true = is_reference(sb)
+           """
+
+  native_f func: :keyspaces_to_fetch,
+           args: [sb, keyspaces],
+           args_spec: [T.session_builder(), list(String.t())],
+           return_spec: T.session_builder(),
+           doc_example: """
+           iex> sb = SessionBuilder.new()
+           iex> sb = SessionBuilder.keyspaces_to_fetch(sb, ["my_keyspace"])
            iex> true = is_reference(sb)
            """
 
@@ -129,17 +152,6 @@ defmodule ExScylla.SessionBuilder do
            iex> true = is_reference(sb)
            """
 
-  native_f func: :load_balancing,
-           args: [sb, policy],
-           args_spec: [T.session_builder(), T.load_balancing_policy()],
-           return_spec: T.session_builder(),
-           doc_example: """
-           iex> sb = SessionBuilder.new()
-           iex> policy = %RoundRobinPolicy{token_aware: true}
-           iex> sb = SessionBuilder.load_balancing(sb, policy)
-           iex> true = is_reference(sb)
-           """
-
   native_f func: :new,
            args: [],
            args_spec: [],
@@ -170,13 +182,13 @@ defmodule ExScylla.SessionBuilder do
            iex> true = is_reference(sb)
            """
 
-  native_f func: :retry_policy,
-           args: [sb, retry_policy],
-           args_spec: [T.session_builder(), T.retry_policy()],
+  native_f func: :refresh_metadata_on_auto_schema_agreement,
+           args: [sb, refresh_metadata],
+           args_spec: [T.session_builder(), boolean()],
            return_spec: T.session_builder(),
            doc_example: """
            iex> sb = SessionBuilder.new()
-           iex> sb = SessionBuilder.retry_policy(sb, :default_retry_policy)
+           iex> sb = SessionBuilder.refresh_metadata_on_auto_schema_agreement(sb, true)
            iex> true = is_reference(sb)
            """
 
@@ -192,15 +204,14 @@ defmodule ExScylla.SessionBuilder do
            iex> true = is_reference(sb)
            """
 
-
-  native_f func: :speculative_execution,
-           args: [sb, policy],
-           args_spec: [T.session_builder(), T.speculative_execution_policy()],
+  native_f func: :tcp_keepalive_interval,
+           args: [sb, interval_ms],
+           args_spec: [T.session_builder(), pos_integer()],
            return_spec: T.session_builder(),
            doc_example: """
            iex> sb = SessionBuilder.new()
-           iex> se = %SimpleSpeculativeExecutionPolicy{max_retry_count: 10, retry_interval_ms: 5_000}
-           iex> sb = SessionBuilder.speculative_execution(sb, se)
+           iex> interval_ms = 5_000
+           iex> sb = SessionBuilder.tcp_keepalive_interval(sb, interval_ms)
            iex> true = is_reference(sb)
            """
 
@@ -214,17 +225,36 @@ defmodule ExScylla.SessionBuilder do
            iex> true = is_reference(sb)
            """
 
-  native_f func: :use_keyspace,
-           args: [sb, keyspace_name, case_sensitive],
-           args_spec: [T.session_builder(), String.t(), boolean()],
+  native_f func: :tracing_info_fetch_attempts,
+           args: [sb, attempts],
+           args_spec: [T.session_builder(), non_neg_integer()],
            return_spec: T.session_builder(),
            doc_example: """
            iex> sb = SessionBuilder.new()
-           iex> case_sensitive = true
-           iex> sb = SessionBuilder.use_keyspace(sb, "my_keyspace", case_sensitive)
+           iex> sb = SessionBuilder.tracing_info_fetch_attempts(sb, 5)
            iex> true = is_reference(sb)
            """
 
+  native_f func: :tracing_info_fetch_consistency,
+           args: [sb, consistency],
+           args_spec: [T.session_builder(), T.consistency()],
+           return_spec: T.session_builder(),
+           doc_example: """
+           iex> sb = SessionBuilder.new()
+           iex> sb = SessionBuilder.tracing_info_fetch_consistency(sb, :quorum)
+           iex> true = is_reference(sb)
+           """
+
+  native_f func: :tracing_info_fetch_interval,
+           args: [sb, interval_ms],
+           args_spec: [T.session_builder(), non_neg_integer()],
+           return_spec: T.session_builder(),
+           doc_example: """
+           iex> interval_ms = 15000
+           iex> sb = SessionBuilder.new()
+           iex> sb = SessionBuilder.tracing_info_fetch_interval(sb, interval_ms)
+           iex> true = is_reference(sb)
+           """
 
   native_f func: :user,
            args: [sb, username, passwd],
@@ -234,6 +264,16 @@ defmodule ExScylla.SessionBuilder do
            iex> sb = SessionBuilder.new()
            iex> {username, passwd} = {"user", "myS3cr3tp@ssw0rd"}
            iex> sb = SessionBuilder.user(sb, username, passwd)
+           iex> true = is_reference(sb)
+           """
+
+  native_f func: :write_coalescing,
+           args: [sb, enable],
+           args_spec: [T.session_builder(), boolean()],
+           return_spec: T.session_builder(),
+           doc_example: """
+           iex> sb = SessionBuilder.new()
+           iex> sb = SessionBuilder.write_coalescing(sb, true)
            iex> true = is_reference(sb)
            """
 end

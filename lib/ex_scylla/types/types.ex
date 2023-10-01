@@ -9,8 +9,12 @@ defmodule ExScylla.Types do
 
   @type batch :: reference()
   @type ts_micros :: integer()
+  @type duration_ms :: non_neg_integer()
   @type query :: reference()
   @type session :: reference()
+  @type execution_profile_handle :: reference()
+  @type execution_profile :: reference()
+  @type execution_profile_builder :: reference()
   @type prepared_statement :: reference()
   @type consistency :: :any | :one | :two | :three | :quorum | :all | :local_quorum | :each_quorum | :local_one
   @type session_builder :: reference()

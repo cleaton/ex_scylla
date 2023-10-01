@@ -1,8 +1,9 @@
 defmodule ExScylla.Session do
   alias ExScylla.Types, as: T
-  alias ExScylla.Types.BatchResult
   alias ExScylla.Types.QueryResult
   alias ExScylla.Types.Errors.QueryError
+  alias ExScylla.Types.Errors.SerializeValuesError
+  alias ExScylla.Types.Token
   use ExScylla.Macros.Native, [
     prefix: :s,
     docs_rs_path: "/scylla/transport/session/struct.Session.html",
@@ -39,7 +40,7 @@ defmodule ExScylla.Session do
   native_f_async func: :batch,
                  args: [session, batch, values],
                  args_spec: [T.session(), T.batch(), T.values()],
-                 return_spec: {:ok, BatchResult.t()} | {:error, QueryError.t()},
+                 return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
                  example_setup: :session_setup,
                  doc_example: """
                  iex> batch = Batch.new(:unlogged)
@@ -47,7 +48,19 @@ defmodule ExScylla.Session do
                  iex> values = [
                  ...>   [{:text, "test"}, {:int, 2}, {:double, 1.0}]
                  ...> ]
-                 iex> {:ok, %BatchResult{}} = Session.batch(session, batch, values)
+                 iex> {:ok, %QueryResult{}} = Session.batch(session, batch, values)
+                 """
+
+  native_f       func: :calculate_token,
+                 args: [session, prepared, values],
+                 args_spec: [T.session(), T.prepared_statement(), T.values()],
+                 return_spec: Token.t() | nil | {:error, SerializeValuesError.t() | QueryError.t()},
+                 example_setup: :session_setup,
+                 doc_example: """
+                 iex> {:ok, ps} = Session.prepare(session, "SELECT * FROM test.s_doc WHERE a = ?;")
+                 iex> values = [{:text, "test"}]
+                 iex> %Token{value: t} = Session.calculate_token(session, ps, values)
+                 iex> true = is_integer(t)
                  """
 
   native_f_async func: :check_schema_agreement,
@@ -57,17 +70,6 @@ defmodule ExScylla.Session do
                  example_setup: :session_setup,
                  doc_example: """
                  iex> {:ok, true} = Session.check_schema_agreement(session)
-                 """
-
-  native_f_async func: :execute,
-                 args: [session, prepared, values],
-                 args_spec: [T.session(), T.prepared_statement(), T.values()],
-                 return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
-                 example_setup: :session_setup,
-                 doc_example: """
-                 iex> {:ok, ps} = Session.prepare(session, "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)")
-                 iex> values = [{:text, "test"}, {:int, 2}, {:double, 1.0}]
-                 iex> {:ok, %QueryResult{}} = Session.execute(session, ps, values)
                  """
 
   native_f_async func: :execute_paged,
@@ -82,6 +84,16 @@ defmodule ExScylla.Session do
                  iex> {:ok, %QueryResult{paging_state: pgs}} = Session.execute_paged(session, ps, values, nil)
                  iex> true = is_binary(pgs)
                  iex> {:ok, %QueryResult{}} = Session.execute_paged(session, ps, values, pgs)
+                 """
+  native_f_async func: :execute,
+                 args: [session, prepared, values],
+                 args_spec: [T.session(), T.prepared_statement(), T.values()],
+                 return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
+                 example_setup: :session_setup,
+                 doc_example: """
+                 iex> {:ok, ps} = Session.prepare(session, "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)")
+                 iex> values = [{:text, "test"}, {:int, 2}, {:double, 1.0}]
+                 iex> {:ok, %QueryResult{}} = Session.execute(session, ps, values)
                  """
 
   native_f_async func: :fetch_schema_version,

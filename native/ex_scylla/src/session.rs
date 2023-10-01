@@ -12,6 +12,7 @@ use rustler::{Atom, Encoder, Env, Error, NifResult, ResourceArc, Term};
 use scylla::frame::response::result::CqlValue;
 use scylla::statement::batch::Batch;
 use scylla::Session;
+use scylla::frame::value::ValueList;
 use types::*;
 
 #[rustler::nif]
@@ -68,6 +69,15 @@ fn s_batch<'a>(
         res.ex()
     });
     Ok(atom::ok())
+}
+
+#[rustler::nif]
+fn s_calculate_token(session: ResourceArc<SessionResource>, prepared: ResourceArc<PreparedStatementResource>, values: Vec<ScyllaValue>) -> NifResult<Option<ScyllaToken>> {
+    let session: &Session = &session.0;
+    let values = values.r()?;
+    let serialized = values.serialized().map_err(|e| Error::Term(Box::new(e.ex())))?;
+    let r = session.calculate_token(&prepared.0, &serialized);
+    r.map(|ot| ot.map(|t| ScyllaToken::from(t))).map_err(|e| Error::Term(Box::new(e.ex())))
 }
 
 #[rustler::nif]

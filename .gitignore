@@ -27,3 +27,8 @@ ex_scylla_driver-*.tar
 
 # Ignore so libs
 *.so
+
+/native/ex_scylla/*.profraw
+/*.profraw
+/.vscode
+/log

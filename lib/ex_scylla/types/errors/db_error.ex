@@ -1,9 +1,9 @@
 defmodule ExScylla.Types.Errors.DbError do
-  use ExScylla.Macros.Native
+  alias ExScylla.Macros.Native
   @type msg :: String.t()
   @typedoc """
     For more details, see:
-      https://docs.rs/scylla/#{@scylla_version}/scylla/transport/errors/enum.DbError.html
+      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/transport/errors/enum.DbError.html
   """
   @type t :: {:syntax_error, msg()}
            | {:invalid, msg()}
