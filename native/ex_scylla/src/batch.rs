@@ -4,6 +4,7 @@ use scylla::batch::{Batch, BatchStatement};
 
 pub mod types;
 use crate::consts::*;
+use crate::execution::execution_profile_handle::ExecutionProfileHandleResource;
 use crate::session::types::ScyllaBatchStatement;
 use crate::types::*;
 use types::*;
@@ -15,6 +16,19 @@ fn b_append_statement(
 ) -> ResourceArc<BatchResource> {
     let mut b: Batch = batch.0.to_owned();
     b.append_statement(statement);
+    ResourceArc::new(BatchResource(b))
+}
+
+#[rustler::nif]
+fn b_get_execution_profile_handle(qr: ResourceArc<BatchResource>) -> Option<ResourceArc<ExecutionProfileHandleResource>> {
+    let b: &Batch = &qr.0;
+    b.get_execution_profile_handle().map(|h| ResourceArc::new(ExecutionProfileHandleResource(h.clone())))
+}
+
+#[rustler::nif]
+fn b_set_execution_profile_handle(q: ResourceArc<BatchResource>, profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>) -> ResourceArc<BatchResource> {
+    let mut b: Batch = q.0.to_owned();
+    b.set_execution_profile_handle(profile_handle.map(|ephr| ephr.0.clone()));
     ResourceArc::new(BatchResource(b))
 }
 

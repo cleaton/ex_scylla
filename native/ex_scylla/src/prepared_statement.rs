@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use rustler::Atom;
 use rustler::Error;
 use rustler::NifResult;
@@ -7,6 +9,7 @@ use scylla::prepared_statement::PreparedStatement;
 
 pub mod types;
 use crate::consts::*;
+use crate::execution::execution_profile_handle::ExecutionProfileHandleResource;
 use crate::session::types::*;
 use crate::types::*;
 use crate::utils::*;
@@ -25,6 +28,47 @@ fn ps_compute_partition_key(
     ps.compute_partition_key(&bound_values)
         .map(|b| b.into())
         .map_err(|e| Error::Term(Box::new(e.ex())))
+}
+
+#[rustler::nif]
+fn ps_get_execution_profile_handle(
+    ps: ResourceArc<PreparedStatementResource>,
+) -> Option<ResourceArc<ExecutionProfileHandleResource>> {
+    let ps: &PreparedStatement = &ps.0;
+    ps.get_execution_profile_handle()
+        .map(|h| ResourceArc::new(ExecutionProfileHandleResource(h.clone())))
+}
+
+#[rustler::nif]
+fn ps_set_execution_profile_handle(
+    ps: ResourceArc<PreparedStatementResource>,
+    profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>,
+) -> ResourceArc<PreparedStatementResource> {
+    let mut ps: PreparedStatement = ps.0.to_owned();
+    ps.set_execution_profile_handle(profile_handle.map(|ephr| ephr.0.clone()));
+    ps.ex()
+}
+
+#[rustler::nif]
+fn ps_get_request_timeout(ps: ResourceArc<PreparedStatementResource>) -> Option<u64> {
+    let ps: &PreparedStatement = &ps.0;
+    ps.get_request_timeout().map(|d| d.as_millis() as u64)
+}
+
+#[rustler::nif]
+fn ps_set_request_timeout(
+    ps: ResourceArc<PreparedStatementResource>,
+    timeout_ms: Option<u64>,
+) -> ResourceArc<PreparedStatementResource> {
+    let mut ps: PreparedStatement = ps.0.to_owned();
+    ps.set_request_timeout(timeout_ms.map(|ms| Duration::from_millis(ms)));
+    ps.ex()
+}
+
+#[rustler::nif]
+fn ps_is_confirmed_lwt(ps: ResourceArc<PreparedStatementResource>) -> bool {
+    let ps: &PreparedStatement = &ps.0;
+    ps.is_confirmed_lwt()
 }
 
 #[rustler::nif]

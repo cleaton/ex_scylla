@@ -16,16 +16,16 @@ fn q_get_execution_profile_handle(qr: ResourceArc<QueryResource>) -> Option<Reso
 }
 
 #[rustler::nif]
-fn q_get_request_timeout(qr: ResourceArc<QueryResource>) -> Option<u64> {
-    let q: &Query = &qr.0;
-    q.get_request_timeout().map(|d| d.as_millis() as u64)
-}
-
-#[rustler::nif]
 fn q_set_execution_profile_handle(q: ResourceArc<QueryResource>, profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>) -> ResourceArc<QueryResource> {
     let mut q: Query = q.0.to_owned();
     q.set_execution_profile_handle(profile_handle.map(|ephr| ephr.0.clone()));
     q.ex()
+}
+
+#[rustler::nif]
+fn q_get_request_timeout(qr: ResourceArc<QueryResource>) -> Option<u64> {
+    let q: &Query = &qr.0;
+    q.get_request_timeout().map(|d| d.as_millis() as u64)
 }
 
 #[rustler::nif]

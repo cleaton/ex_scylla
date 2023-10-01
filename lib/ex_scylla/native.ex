@@ -86,9 +86,9 @@ defmodule ExScylla.Native do
       def q_set_tracing(_q, _should_trace), do: e()
       def q_with_page_size(_q, _page_size), do: e()
       # Batch
-      # //batch::b_get_execution_profile_handle,
+      def b_get_execution_profile_handle(_batch), do: e()
       # //batch::b_remove_history_listener,
-      # //batch::b_set_execution_profile_handle,
+      def b_set_execution_profile_handle(_batch, _profile_handle), do: e()
       # //batch::b_set_history_listener,
       def b_append_statement(_batch, _statement), do: e()
       def b_get_consistency(_batch), do: e()
@@ -107,13 +107,13 @@ defmodule ExScylla.Native do
       def b_set_timestamp(_batch, _timestamp_micros), do: e()
       def b_set_tracing(_batch, _should_trace), do: e()
       # PreparedStatement
-      # //prepared_statement::ps_get_execution_profile_handle,
-      # //prepared_statement::ps_get_request_timeout,
-      # //prepared_statement::ps_is_confirmed_lwt,
+      def ps_get_execution_profile_handle(_ps), do: e()
+      def ps_get_request_timeout(_ps), do: e()
+      def ps_is_confirmed_lwt(_ps), do: e()
       # //prepared_statement::ps_remove_history_listener,
-      # //prepared_statement::ps_set_execution_profile_handle,
+      def ps_set_execution_profile_handle(_ps, _profile_handle), do: e()
       # //prepared_statement::ps_set_history_listener,
-      # //prepared_statement::set_request_timeout,
+      def ps_set_request_timeout(_ps, _timeout_ms), do: e()
       def ps_compute_partition_key(_ps, _bound_values), do: e()
       def ps_disable_paging(_ps), do: e()
       def ps_get_consistency(_ps), do: e()
