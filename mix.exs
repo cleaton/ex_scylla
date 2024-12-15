@@ -4,7 +4,7 @@ defmodule ExScylla.MixProject do
   def project do
     [
       app: :ex_scylla,
-      version: "0.5.0",
+      version: "0.5.1",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       test_coverage: [tool: LcovEx, output: "cover"],
