@@ -66,10 +66,11 @@ defmodule ExScylla.Macros.Native do
     args = Keyword.fetch!(macro_args, :args)
     args_spec = Keyword.fetch!(macro_args, :args_spec)
     return_spec = Keyword.fetch!(macro_args, :return_spec)
-    # doc_text = Keyword.get(macro_args, :doc_text, "")
     doc_example = Keyword.get(macro_args, :doc_example, "")
+
     example_setup = if Keyword.get(macro_args, :example_setup) do
-      Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup)) |> String.trim_trailing("\n")
+      Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup))
+      |> String.trim_trailing("\n")
     end
 
     prefix = Module.get_attribute(__CALLER__.module, :prefix)

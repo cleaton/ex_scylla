@@ -4,12 +4,14 @@ defmodule ExScylla.Session do
   alias ExScylla.Types.Errors.QueryError
   alias ExScylla.Types.Errors.SerializeValuesError
   alias ExScylla.Types.Token
+
   use ExScylla.Macros.Native, [
     prefix: :s,
     docs_rs_path: "/scylla/transport/session/struct.Session.html",
     session_setup: """
+    iex> node = Application.get_env(:ex_scylla, :test_node, "127.0.0.1:9042")
     iex> {:ok, session} = SessionBuilder.new()
-    ...>                  |> SessionBuilder.known_node("127.0.0.1:9042")
+    ...>                  |> SessionBuilder.known_node(node)
     ...>                  |> SessionBuilder.build()
     """
   ]
@@ -78,9 +80,12 @@ defmodule ExScylla.Session do
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
                  example_setup: :session_setup,
                  doc_example: """
+                 iex> query = "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)"
+                 iex> values = [{:text, "test_execute_paged"}, {:int, 1}, {:double, 1.0}]
+                 iex> {:ok, %QueryResult{}} = Session.query(session, query, values)
                  iex> {:ok, ps} = Session.prepare(session, "SELECT * FROM test.s_doc WHERE a = ?;")
                  iex> ps = Prepared.set_page_size(ps, 1)
-                 iex> values = [{:text, "test"}]
+                 iex> values = [{:text, "test_execute_paged"}]
                  iex> {:ok, %QueryResult{paging_state: pgs}} = Session.execute_paged(session, ps, values, nil)
                  iex> true = is_binary(pgs)
                  iex> {:ok, %QueryResult{}} = Session.execute_paged(session, ps, values, pgs)
@@ -140,9 +145,12 @@ defmodule ExScylla.Session do
                  type_map: query = to_scylla_query(query),
                  example_setup: :session_setup,
                  doc_example: """
+                 iex> query = "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)"
+                 iex> values = [{:text, "test_query_paged"}, {:int, 1}, {:double, 1.0}]
+                 iex> {:ok, %QueryResult{}} = Session.query(session, query, values)
                  iex> q = Query.new("SELECT * FROM test.s_doc WHERE a = ?;")
                  ...>              |> Query.with_page_size(1)
-                 iex> values = [{:text, "test"}]
+                 iex> values = [{:text, "test_query_paged"}]
                  iex> {:ok, %QueryResult{paging_state: pgs}} = Session.query_paged(session, q, values, nil)
                  iex> true = is_binary(pgs)
                  iex> {:ok, %QueryResult{}} = Session.query_paged(session, q, values, pgs)

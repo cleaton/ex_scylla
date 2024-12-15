@@ -1,23 +1,16 @@
-alias ExScylla.Session
-alias ExScylla.SessionBuilder
+alias ExScylla.TestSupport
 
-{:ok, session} = SessionBuilder.new()
-                  |> SessionBuilder.known_node("127.0.0.1:9042")
-                  |> SessionBuilder.build()
-ks1 = """
-  CREATE KEYSPACE IF NOT EXISTS test
-  WITH REPLICATION = {
-    'class' : 'SimpleStrategy',
-    'replication_factor' : 1
-  };
-"""
-ks2 = """
-  CREATE KEYSPACE IF NOT EXISTS another_test_keyspace
-  WITH REPLICATION = {
-    'class' : 'SimpleStrategy',
-    'replication_factor' : 1
-  };
-"""
-{:ok, _} = Session.query(session, ks1, [])
-{:ok, _} = Session.query(session, ks2, [])
+{_container, node, session} = TestSupport.start_container()
+
+# Set the test node configuration
+Application.put_env(:ex_scylla, :test_node, node)
+
+# Create ETS table for test resources
+:ets.new(:ex_scylla_test, [:set, :public, :named_table])
+:ets.insert(:ex_scylla_test, {:session, session})
+
+# Setup keyspaces needed for tests
+TestSupport.setup_simple_keyspace(session, "test")
+TestSupport.setup_simple_keyspace(session, "another_test_keyspace")
+
 ExUnit.start()
