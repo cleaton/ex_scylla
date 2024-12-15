@@ -28,6 +28,14 @@ values = [{:text, "test"}, {:int, 2}, {:double, 1.0}]
 ## Installation
 https://hex.pm/packages/ex_scylla
 
+## Contributing
+
+We welcome contributions! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute to this project.
+
+## Changelog
+
+For a detailed list of changes and updates, please refer to the [CHANGELOG.md](CHANGELOG.md) file.
+
 ```elixir
 def deps do
   [

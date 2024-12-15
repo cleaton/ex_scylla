@@ -10,9 +10,10 @@ defmodule SessionTest do
   doctest Session
 
   setup_all do
+    node = Application.get_env(:ex_scylla, :test_node)
     {:ok, session} = SessionBuilder.new()
-                     |> SessionBuilder.known_node("127.0.0.1:9042")
-                     |> SessionBuilder.build()
+                    |> SessionBuilder.known_node(node)
+                    |> SessionBuilder.build()
     t = """
         CREATE TABLE IF NOT EXISTS test.s_doc(
           a TEXT,
@@ -22,7 +23,6 @@ defmodule SessionTest do
         );
         """
     {:ok, _} = Session.query(session, t, [])
-    :ok
+    {:ok, %{session: session}}
   end
-
 end

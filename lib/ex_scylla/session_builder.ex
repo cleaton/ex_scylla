@@ -34,8 +34,9 @@ defmodule ExScylla.SessionBuilder do
                  args_spec: [T.session_builder()],
                  return_spec: {:ok, T.session()} | {:error, NewSessionError.t()},
                  doc_example: """
+                 iex> node = Application.get_env(:ex_scylla, :test_node, "127.0.0.1:9042")
                  iex> sb = SessionBuilder.new()
-                 ...>      |> SessionBuilder.known_node("127.0.0.1:9042")
+                 ...>      |> SessionBuilder.known_node(node)
                  iex> {:ok, session} = SessionBuilder.build(sb)
                  iex> true = is_reference(session)
                  """

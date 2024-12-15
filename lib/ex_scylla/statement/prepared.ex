@@ -7,10 +7,11 @@ defmodule ExScylla.Statement.Prepared do
                           prefix: :ps,
                           docs_rs_path: "/scylla/statement/prepared_statement/struct.PreparedStatement.html",
                           ps_setup: """
+                          iex> node = Application.get_env(:ex_scylla, :test_node, "127.0.0.1:9042")
                           iex> {:ok, session} = SessionBuilder.new()
-                          ...>                  |> SessionBuilder.known_node("127.0.0.1:9042")
+                          ...>                  |> SessionBuilder.known_node(node)
                           ...>                  |> SessionBuilder.build()
-                          iex> {:ok, ps} = Session.prepare(session, "SELECT * FROM test.s_doc WHERE a = ? AND b = ?;")
+                          iex> {:ok, ps} = Session.prepare(session, "SELECT * FROM test.ps_doc WHERE a = ? AND b = ?;")
                           """
                         ]
   @type msg :: String.t()
@@ -186,7 +187,7 @@ native_f func: :get_execution_profile_handle,
            example_setup: :ps_setup,
            doc_example: """
            iex> Prepared.get_statement(ps)
-           "SELECT * FROM test.s_doc WHERE a = ? AND b = ?;"
+           "SELECT * FROM test.ps_doc WHERE a = ? AND b = ?;"
            """
 
   native_f func: :get_table_name,
@@ -196,7 +197,7 @@ native_f func: :get_execution_profile_handle,
            example_setup: :ps_setup,
            doc_example: """
            iex> Prepared.get_table_name(ps)
-           "s_doc"
+           "ps_doc"
            """
 
   native_f func: :get_timestamp,

@@ -1,29 +1,62 @@
-alias ExScylla.SessionBuilder
+alias ExScylla.TestSupport
 alias ExScylla.Session
+
+# Start ScyllaDB container
+{_container, node, session} = TestSupport.start_container()
+[host, port] = String.split(node, ":")
+
+
+# Create keyspace using TestSupport
+TestSupport.setup_simple_keyspace(session, "load_test_erlcass")
+
+
+# Configure erlcass through application environment
+Application.put_env(:erlcass, :keyspace, "load_test_erlcass")
+Application.put_env(:erlcass, :cluster_options, [
+  {:contact_points, host},
+  {:port, String.to_integer(port)},
+  {:latency_aware_routing, true},
+  {:token_aware_routing, true},
+  {:number_threads_io, 4},
+  {:queue_size_io, 128000},
+  {:core_connections_host, 1},
+  {:tcp_nodelay, true},
+  {:tcp_keepalive, {true, 60}},
+  {:connect_timeout, 5000},
+  {:request_timeout, 5000},
+  {:retry_policy, {:default, true}}
+])
+
+# Start erlcass
+Application.ensure_all_started(:erlcass)
+
+# Rest of your existing benchmark code starting from the table creation
 q = "SELECT col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, col13, col14 FROM test_table WHERE col1 = ?"
 args = Enum.map(1..100, fn i -> "hello#{i}" end)
 keyspace = "load_test_erlcass"
-Application.ensure_all_started(:erlcass)
 
-# CREATE KEYSPACE load_test_erlcass WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 1};
-#### SETUP
-#CREATE TABLE IF NOT EXISTS load_test_erlcass.test_table(
-#col1 ascii,
-#col2 bigint,
-#col3 blob,
-#col4 boolean,
-#col5 decimal,
-#col6 double,
-#col7 float,
-#col8 int,
-#col9 timestamp,
-#col10 uuid,
-#col11 varchar,
-#col12 varint,
-#col13 timeuuid,
-#col14 inet,
-#PRIMARY KEY (col1)
-#);
+# Create test table
+table_query = """
+CREATE TABLE IF NOT EXISTS #{keyspace}.test_table(
+  col1 ascii,
+  col2 bigint,
+  col3 blob,
+  col4 boolean,
+  col5 decimal,
+  col6 double,
+  col7 float,
+  col8 int,
+  col9 timestamp,
+  col10 uuid,
+  col11 varchar,
+  col12 varint,
+  col13 timeuuid,
+  col14 inet,
+  PRIMARY KEY (col1)
+);
+"""
+{:ok, _} = Session.query(session, table_query, [])
+
 insert_query = "INSERT INTO #{keyspace}.test_table(col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, col13, col14) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 :ok = :erlcass.add_prepare_statement(:add_load_test_record, insert_query)
 
@@ -63,10 +96,6 @@ end
 
 :ok = :erlcass.add_prepare_statement(:testing_query, {q, 1});
 :ets.new(:exscylla, [:ordered_set, :named_table])
-{:ok, session} = SessionBuilder.new()
-      |> SessionBuilder.known_node("127.0.0.1:9042")
-      |> SessionBuilder.tcp_nodelay(true)
-      |> SessionBuilder.build()
 Session.use_keyspace(session, "load_test_erlcass", true)
 :ets.insert(:exscylla, {:s, session})
 {:ok, ps} = Session.prepare(session, q)
