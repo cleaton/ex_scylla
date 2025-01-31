@@ -93,7 +93,7 @@ defmodule ExScylla.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.29.1"},
+      {:rustler, "~> 0.36.0"},
       {:testcontainers, "~> 1.11", only: [:test, :bench]},
       {:lcov_ex, "~> 0.3", only: [:test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
