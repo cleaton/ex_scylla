@@ -22,7 +22,7 @@ defmodule SessionTest do
           PRIMARY KEY (a, b)
         );
         """
-    {:ok, _} = Session.query(session, t, [])
+    {:ok, _} = Session.query_unpaged(session, t, [])
     {:ok, %{session: session}}
   end
 end
