@@ -10,10 +10,6 @@ mod execution;
 pub mod types;
 pub mod utils;
 use std::option::Option::Some;
-use execution::execution_profile;
-use execution::execution_profile_builder;
-use execution::execution_profile_handle;
-use execution::load_balancing;
 
 // Setup
 rustler::init!(

@@ -1,12 +1,9 @@
-use std::convert::TryInto;
-use std::time::Duration;
 
 use super::runtime;
 pub mod types;
 use crate::batch::types::BatchResource;
 use crate::prepared_statement::types::*;
 use crate::utils::*;
-use crate::errors::ScyllaQueryError;
 use rustler::env::{OwnedEnv, SavedTerm};
 use rustler::types::atom;
 use rustler::{Atom, Encoder, Env, NifResult, ResourceArc, Term};

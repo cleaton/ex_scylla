@@ -25,7 +25,6 @@ use std::net::Ipv4Addr;
 use std::net::Ipv6Addr;
 use std::ops::Deref;
 use uuid::{Bytes, Uuid};
-use scylla::frame::value::{Value, ValueTooBig};
 use scylla::serialize::value::SerializeValue;
 use scylla::serialize::writers::WrittenCellProof;
 use scylla::serialize::SerializationError;

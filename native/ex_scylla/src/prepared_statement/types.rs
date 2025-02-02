@@ -10,7 +10,6 @@ use crate::{
 };
 
 use std::panic::RefUnwindSafe;
-use rustler::NifUnitEnum;
 
 pub struct PreparedStatementResource(pub PreparedStatement);
 impl RefUnwindSafe for PreparedStatementResource {}
