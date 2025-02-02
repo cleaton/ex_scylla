@@ -36,7 +36,7 @@ pub enum ScyllaQueryError {
 
 to_elixir!(QueryError, ScyllaQueryError, |qe: QueryError| {
     match qe {
-        QueryError::DbError(dbe, msg) => ScyllaQueryError::DbError(dbe.ex()),
+        QueryError::DbError(dbe, _msg) => ScyllaQueryError::DbError(dbe.ex()),
         QueryError::BadQuery(bq) => ScyllaQueryError::BadQuery(bq.ex()),
         QueryError::CqlRequestSerialization(err) => ScyllaQueryError::CqlRequestSerialization(err.to_string()),
         QueryError::BodyExtensionsParseError(err) => ScyllaQueryError::BodyExtensionsParseError(err.to_string()),
@@ -69,7 +69,7 @@ to_elixir!(
     TranslationError,
     ScyllaTranslationError,
     |te: TranslationError| {
-        let msg = te.to_string();
+        let _msg = te.to_string();
         match te {
             TranslationError::NoRuleForAddress(addr) => ScyllaTranslationError::NoRuleForAddress(addr.to_string()),
             TranslationError::InvalidAddressInRule { translated_addr_str, reason } => 
@@ -204,7 +204,7 @@ to_elixir!(
             BadKeyspaceName::Empty => ScyllaBadKeyspaceName::Empty(msg),
             BadKeyspaceName::TooLong(_, _) => ScyllaBadKeyspaceName::TooLong(msg),
             BadKeyspaceName::IllegalCharacter(_, _) => ScyllaBadKeyspaceName::IllegalCharacter(msg),
-            _ => ScyllaBadKeyspaceName::IllegalCharacter(msg), // Catch-all for future variants
+            _ => ScyllaBadKeyspaceName::IllegalCharacter(msg),
         }
     }
 );
@@ -221,12 +221,11 @@ to_elixir!(
     PartitionKeyError,
     ScyllaPartitionKeyError,
     |pke: PartitionKeyError| {
-        let msg = pke.to_string();
+        let _msg = pke.to_string();
         match pke {
             PartitionKeyError::PartitionKeyExtraction(err) => ScyllaPartitionKeyError::PartitionKeyExtraction(err.to_string()),
             PartitionKeyError::TokenCalculation(err) => ScyllaPartitionKeyError::TokenCalculation(err.to_string()),
-            PartitionKeyError::Serialization(err) => ScyllaPartitionKeyError::Serialization(err.to_string()),
-            _ => ScyllaPartitionKeyError::Unknown(msg),
+            PartitionKeyError::Serialization(err) => ScyllaPartitionKeyError::Serialization(err.to_string())
         }
     }
 );

@@ -80,7 +80,7 @@ macro_rules! async_elixir {
             .run(|env| -> NifResult<SavedTerm> { Ok(owned_env.save($opaque.in_env(env))) })?;
         runtime::rt().spawn(async move {
             let res = $e;
-            owned_env.send_and_clear(&pid, |env| (opaque.load(env), res).encode(env));
+            let _ = owned_env.send_and_clear(&pid, |env| (opaque.load(env), res).encode(env));
         });
     };
 }
