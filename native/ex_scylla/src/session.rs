@@ -167,7 +167,7 @@ fn s_prepare<'a>(
 }
 
 #[rustler::nif]
-fn query_unpaged<'a>(
+fn s_query_unpaged<'a>(
     env: Env<'a>,
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
@@ -202,7 +202,7 @@ fn query_unpaged<'a>(
 //}
 
 #[rustler::nif]
-fn query_single_page<'a>(
+fn s_query_single_page<'a>(
     env: Env<'a>,
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,

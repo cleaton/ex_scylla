@@ -14,8 +14,7 @@ pub mod utils;
 use std::option::Option::Some;
 use rustler::Env;
 
-// Setup
-rustler::init!("Elixir.ExScylla.Native", load = load);
+
 
 /// Declares all NIF resources used by the library.
 /// Returns true if all resources were successfully declared, false otherwise.
@@ -45,6 +44,11 @@ fn declare_resources(env: Env) -> bool {
 }
 
 fn load(env: rustler::Env, _: rustler::Term) -> bool {
+    println!("Loading ExScylla.Native...");
     runtime::init();
-    declare_resources(env)
+    declare_resources(env);
+    true
 }
+
+// Setup
+rustler::init!("Elixir.ExScylla.Native", load = load);

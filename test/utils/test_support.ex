@@ -44,7 +44,7 @@ defmodule ExScylla.TestSupport do
         'replication_factor' : #{replication_factor}
       };
     """
-    {:ok, _} = Session.query(session, ks, [])
+    {:ok, _} = Session.query_unpaged(session, ks, [])
     :ok
   end
 end

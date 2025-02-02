@@ -2,7 +2,8 @@ defmodule ExScylla.Native do
   use Rustler,
       otp_app: :ex_scylla,
       crate: "ex_scylla",
-      env: if( Mix.env() == :test, do: [{"LLVM_PROFILE_FILE", "instrument_coverage.profraw"}, {"RUSTFLAGS", "-C instrument-coverage"}], else: [])
+      env: if( Mix.env() == :test, do: [{"LLVM_PROFILE_FILE", "instrument_coverage.profraw"}, {"RUSTFLAGS", "-C instrument-coverage"}], else: []),
+      mode: :release
 
       # SessionBuilder
       def sb_default_execution_profile_handle(_sbr, _ephr), do: e()
@@ -35,6 +36,7 @@ defmodule ExScylla.Native do
       def sb_tracing_info_fetch_consistency(_sbr, _consistency), do: e()
       def sb_tracing_info_fetch_interval(_sbr, _interval_ms), do: e()
       def sb_user(_sbr, _username, _passwd), do: e()
+      def sb_use_keyspace(_sbr, _keyspace_name, _case_sensitive), do: e()
       def sb_write_coalescing(_sbr, _enablde), do: e()
       # Session
       # //session::s_calculate_token_for_partition_key,
@@ -53,12 +55,12 @@ defmodule ExScylla.Native do
       def s_batch(_opaque, _session, _batch, _values), do: e()
       def s_calculate_token(_session, _prepared, _values), do: e()
       def s_check_schema_agreement(_opaque, _session), do: e()
-      def s_execute_paged(_opaque, _session, _prepared, _values, _paging_state), do: e()
-      def s_execute(_opaque, _session, _prepared, _values), do: e()
+      def s_execute_single_page(_opaque, _session, _prepared, _values, _paging_state), do: e()
+      def s_execute_unpaged(_opaque, _session, _prepared, _values), do: e()
       def s_fetch_schema_version(_opaque, _session), do: e()
       def s_prepare(_opaque, _session, _query), do: e()
-      def s_query_paged(_opaque, _session, _query, _values, _paging_state), do: e()
-      def s_query(_opaque_, _session, _query, _values), do: e()
+      def s_query_single_page(_opaque, _session, _query, _values, _paging_state), do: e()
+      def s_query_unpaged(_opaque_, _session, _query, _values), do: e()
       def s_refresh_metadata(_opaque, _session), do: e()
       def s_use_keyspace(_opaque, _session, _keyspace_name, _case_sensitive), do: e()
       # Query

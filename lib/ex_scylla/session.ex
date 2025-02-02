@@ -74,7 +74,7 @@ defmodule ExScylla.Session do
                  iex> {:ok, true} = Session.check_schema_agreement(session)
                  """
 
-  native_f_async func: :execute_paged,
+  native_f_async func: :execute_single_page,
                  args: [session, prepared, values, paging_state],
                  args_spec: [T.session(), T.prepared_statement(), T.values(), T.paging_state() | nil],
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
@@ -82,15 +82,15 @@ defmodule ExScylla.Session do
                  doc_example: """
                  iex> query = "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)"
                  iex> values = [{:text, "test_execute_paged"}, {:int, 1}, {:double, 1.0}]
-                 iex> {:ok, %QueryResult{}} = Session.query(session, query, values)
+                 iex> {:ok, %QueryResult{}} = Session.query_unpaged(session, query, values)
                  iex> {:ok, ps} = Session.prepare(session, "SELECT * FROM test.s_doc WHERE a = ?;")
                  iex> ps = Prepared.set_page_size(ps, 1)
                  iex> values = [{:text, "test_execute_paged"}]
-                 iex> {:ok, %QueryResult{paging_state: pgs}} = Session.execute_paged(session, ps, values, nil)
+                 iex> {:ok, %QueryResult{paging_state: pgs}} = Session.execute_single_page(session, ps, values, nil)
                  iex> true = is_binary(pgs)
-                 iex> {:ok, %QueryResult{}} = Session.execute_paged(session, ps, values, pgs)
+                 iex> {:ok, %QueryResult{}} = Session.execute_single_page(session, ps, values, pgs)
                  """
-  native_f_async func: :execute,
+  native_f_async func: :execute_unpaged,
                  args: [session, prepared, values],
                  args_spec: [T.session(), T.prepared_statement(), T.values()],
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
@@ -98,7 +98,7 @@ defmodule ExScylla.Session do
                  doc_example: """
                  iex> {:ok, ps} = Session.prepare(session, "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)")
                  iex> values = [{:text, "test"}, {:int, 2}, {:double, 1.0}]
-                 iex> {:ok, %QueryResult{}} = Session.execute(session, ps, values)
+                 iex> {:ok, %QueryResult{}} = Session.execute_unpaged(session, ps, values)
                  """
 
   native_f_async func: :fetch_schema_version,
@@ -125,7 +125,7 @@ defmodule ExScylla.Session do
                  iex> true = is_reference(ps)
                  """
 
-  native_f_async func: :query,
+  native_f_async func: :query_unpaged,
                  args: [session, query, values],
                  args_spec: [T.session(), String.t() | T.query(), T.values()],
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
@@ -134,11 +134,11 @@ defmodule ExScylla.Session do
                  doc_example: """
                  iex> query = "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)"
                  iex> values = [{:text, "test"}, {:int, 3}, {:double, 1.0}]
-                 iex> {:ok, %QueryResult{}} = Session.query(session, query, values)
+                 iex> {:ok, %QueryResult{}} = Session.query_unpaged(session, query, values)
                  """
 
       # # //session::s_query_iter,
-  native_f_async func: :query_paged,
+  native_f_async func: :query_single_page,
                  args: [session, query, values, paging_state],
                  args_spec: [T.session(), String.t() | T.query(), T.values(), T.paging_state() | nil],
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
@@ -147,13 +147,13 @@ defmodule ExScylla.Session do
                  doc_example: """
                  iex> query = "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)"
                  iex> values = [{:text, "test_query_paged"}, {:int, 1}, {:double, 1.0}]
-                 iex> {:ok, %QueryResult{}} = Session.query(session, query, values)
+                 iex> {:ok, %QueryResult{}} = Session.query_unpaged(session, query, values)
                  iex> q = Query.new("SELECT * FROM test.s_doc WHERE a = ?;")
                  ...>              |> Query.with_page_size(1)
                  iex> values = [{:text, "test_query_paged"}]
-                 iex> {:ok, %QueryResult{paging_state: pgs}} = Session.query_paged(session, q, values, nil)
+                 iex> {:ok, %QueryResult{paging_state: pgs}} = Session.query_single_page(session, q, values, nil)
                  iex> true = is_binary(pgs)
-                 iex> {:ok, %QueryResult{}} = Session.query_paged(session, q, values, pgs)
+                 iex> {:ok, %QueryResult{}} = Session.query_single_page(session, q, values, pgs)
                  """
 
   native_f_async func: :refresh_metadata,
