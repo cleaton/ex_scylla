@@ -13,7 +13,9 @@ clone_enum!(Consistency, ScyllaConsistency, {
     All,
     LocalQuorum,
     EachQuorum,
-    LocalOne
+    LocalOne,
+    Serial,
+    LocalSerial
 });
 
 clone_enum!(Compression, ScyllaTransportCompression, {

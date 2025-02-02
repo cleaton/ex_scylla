@@ -47,17 +47,6 @@ fn sb_write_coalescing(
 }
 
 #[rustler::nif]
-fn sb_auto_schema_agreement_timeout(
-    sbr: ResourceArc<SessionBuilderResource>,
-    timeout_ms: u64,
-) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| {
-        sb.auto_schema_agreement_timeout(Duration::from_millis(timeout_ms))
-    });
-    sbr
-}
-
-#[rustler::nif]
 fn sb_build<'a>(
     env: Env<'a>,
     opaque: Term<'a>,
@@ -231,13 +220,7 @@ fn sb_new() -> ResourceArc<SessionBuilderResource> {
         SessionBuilder::new(),
     ))))
 }
-#[rustler::nif]
-fn sb_no_auto_schema_agreement(
-    sbr: ResourceArc<SessionBuilderResource>,
-) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| { sb.no_auto_schema_agreement() });
-    sbr
-}
+
 #[rustler::nif]
 fn sb_pool_size(
     sbr: ResourceArc<SessionBuilderResource>,

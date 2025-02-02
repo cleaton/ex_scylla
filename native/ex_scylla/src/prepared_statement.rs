@@ -4,7 +4,6 @@ use rustler::Atom;
 use rustler::Error;
 use rustler::NifResult;
 use rustler::ResourceArc;
-use scylla::frame::value::ValueList;
 use scylla::prepared_statement::PreparedStatement;
 
 pub mod types;
@@ -21,10 +20,6 @@ fn ps_compute_partition_key(
     bound_values: Vec<ScyllaValue>,
 ) -> NifResult<ScyllaBinary> {
     let ps: &PreparedStatement = &ps.0;
-    let bound_values = bound_values.r()?;
-    let bound_values = bound_values
-        .serialized()
-        .map_err(|sve| Error::Term(Box::new(sve.ex())))?;
     ps.compute_partition_key(&bound_values)
         .map(|b| b.into())
         .map_err(|e| Error::Term(Box::new(e.ex())))
@@ -72,15 +67,6 @@ fn ps_is_confirmed_lwt(ps: ResourceArc<PreparedStatementResource>) -> bool {
 }
 
 #[rustler::nif]
-fn ps_disable_paging(
-    ps: ResourceArc<PreparedStatementResource>,
-) -> ResourceArc<PreparedStatementResource> {
-    let mut ps: PreparedStatement = ps.0.to_owned();
-    ps.disable_paging();
-    ps.ex()
-}
-
-#[rustler::nif]
 fn ps_get_consistency(ps: ResourceArc<PreparedStatementResource>) -> Option<ScyllaConsistency> {
     let ps: &PreparedStatement = &ps.0;
     ps.get_consistency().map(|c| c.into())
@@ -105,7 +91,7 @@ fn ps_get_keyspace_name(ps: ResourceArc<PreparedStatementResource>) -> Option<St
 }
 
 #[rustler::nif]
-fn ps_get_page_size(ps: ResourceArc<PreparedStatementResource>) -> Option<i32> {
+fn ps_get_page_size(ps: ResourceArc<PreparedStatementResource>) -> i32 {
     let ps: &PreparedStatement = &ps.0;
     ps.get_page_size()
 }
@@ -120,11 +106,6 @@ fn ps_get_prepare_tracing_ids(ps: ResourceArc<PreparedStatementResource>) -> Vec
     vec
 }
 
-#[rustler::nif]
-fn ps_get_prepared_metadata(ps: ResourceArc<PreparedStatementResource>) -> ScyllaPreparedMetadata {
-    let ps: &PreparedStatement = &ps.0;
-    ps.get_prepared_metadata().into()
-}
 
 #[rustler::nif]
 fn ps_get_retry_policy(_ps: ResourceArc<PreparedStatementResource>) -> Atom {

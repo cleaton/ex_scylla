@@ -1,6 +1,6 @@
 use rustler::{NifStruct, ResourceArc};
 use scylla::{
-    frame::response::result::{PartitionKeyIndex, PreparedMetadata},
+    frame::response::result::PartitionKeyIndex,
     statement::prepared_statement::PreparedStatement,
 };
 
@@ -9,7 +9,11 @@ use crate::{
     utils::{to_elixir, ToElixir},
 };
 
+use std::panic::RefUnwindSafe;
+use rustler::NifUnitEnum;
+
 pub struct PreparedStatementResource(pub PreparedStatement);
+impl RefUnwindSafe for PreparedStatementResource {}
 
 to_elixir!(
     PreparedStatement,
@@ -25,26 +29,6 @@ pub struct ScyllaPreparedMetadata {
     /// using `sequence` field
     pub pk_indexes: Vec<ScyllaPartitionKeyIndex>,
     pub col_specs: Vec<ScyllaColumnSpec>,
-}
-
-impl From<&PreparedMetadata> for ScyllaPreparedMetadata {
-    fn from(pm: &PreparedMetadata) -> Self {
-        ScyllaPreparedMetadata {
-            col_count: pm.col_count,
-            pk_indexes: pm
-                .pk_indexes
-                .to_owned()
-                .into_iter()
-                .map(|pki| pki.into())
-                .collect(),
-            col_specs: pm
-                .col_specs
-                .to_owned()
-                .into_iter()
-                .map(|cs| cs.ex())
-                .collect(),
-        }
-    }
 }
 
 #[derive(NifStruct, Debug)]

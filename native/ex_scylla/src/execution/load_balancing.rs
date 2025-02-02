@@ -1,8 +1,9 @@
 use std::cell::Cell;
-use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::time::Duration;
+use std::sync::Arc;
+use std::panic::RefUnwindSafe;
 
 use rustler::ResourceArc;
 use scylla::load_balancing::DefaultPolicy;
@@ -11,7 +12,7 @@ use scylla::load_balancing::{DefaultPolicyBuilder, LatencyAwarenessBuilder};
 
 pub struct DefaultPolicyBuilderResource(pub Mutex<Cell<DefaultPolicyBuilder>>);
 pub struct LatencyAwarenessPolicyBuilderResource(pub Mutex<Cell<LatencyAwarenessBuilder>>);
-pub struct LoadBalancingPolicyResource(pub Arc<dyn LoadBalancingPolicy>);
+pub struct LoadBalancingPolicyResource(pub Mutex<Arc<dyn LoadBalancingPolicy>>);
 
 macro_rules! use_builder {
     ($dpbr:ident, $e:expr) => {
@@ -36,7 +37,7 @@ fn dpb_build(
     let mut guard: MutexGuard<Cell<DefaultPolicyBuilder>> = dpbr.0.lock().unwrap();
     let builder = guard.get_mut().clone();
     drop(guard);
-    ResourceArc::new(LoadBalancingPolicyResource(builder.build()))
+    ResourceArc::new(LoadBalancingPolicyResource(Mutex::new(builder.build())))
 }
 
 #[rustler::nif]
@@ -90,17 +91,6 @@ fn dpb_prefer_datacenter(
 ) -> ResourceArc<DefaultPolicyBuilderResource> {
     use_builder!(dpbr, |dpb: DefaultPolicyBuilder| {
         dpb.prefer_datacenter(datacenter_name)
-    });
-    dpbr
-}
-
-#[rustler::nif]
-fn dpb_prefer_rack(
-    dpbr: ResourceArc<DefaultPolicyBuilderResource>,
-    rack_name: String,
-) -> ResourceArc<DefaultPolicyBuilderResource> {
-    use_builder!(dpbr, |dpb: DefaultPolicyBuilder| {
-        dpb.prefer_rack(rack_name)
     });
     dpbr
 }
@@ -179,6 +169,8 @@ fn lab_update_rate(
 
 #[rustler::nif]
 fn dp_default() -> ResourceArc<LoadBalancingPolicyResource> {
-    ResourceArc::new(LoadBalancingPolicyResource(Arc::new(DefaultPolicy::default())))
+    ResourceArc::new(LoadBalancingPolicyResource(Mutex::new(Arc::new(DefaultPolicy::default()))))
 }
+
+impl RefUnwindSafe for LoadBalancingPolicyResource {}
 

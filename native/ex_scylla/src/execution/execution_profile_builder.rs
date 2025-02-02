@@ -1,4 +1,3 @@
-
 use crate::types::*;
 use rustler::ResourceArc;
 use scylla::execution_profile::ExecutionProfileBuilder;
@@ -37,7 +36,7 @@ fn epb_build(
     let mut guard: MutexGuard<Cell<ExecutionProfileBuilder>> = epbr.0.lock().unwrap();
     let epbc = guard.get_mut().clone();
     drop(guard);
-    ResourceArc::new(ExecutionProfileResource(epbc.build()))
+    ResourceArc::new(ExecutionProfileResource(Mutex::new(epbc.build())))
 }
 
 #[rustler::nif]
@@ -56,8 +55,9 @@ fn epb_load_balancing_policy(
     epbr: ResourceArc<ExecutionProfileBuilderResource>,
     load_balancing_policy: ResourceArc<LoadBalancingPolicyResource>,
 ) -> ResourceArc<ExecutionProfileBuilderResource> {
+    let policy = load_balancing_policy.0.lock().unwrap().clone();
     use_builder!(epbr, |epb: ExecutionProfileBuilder| {
-        epb.load_balancing_policy(load_balancing_policy.0.clone())
+        epb.load_balancing_policy(policy)
     });
     epbr
 }

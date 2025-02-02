@@ -1,5 +1,6 @@
 use rustler::types::atom;
 use rustler::{Atom, Encoder, Env, Term};
+
 pub trait ToElixir<T: Encoder> {
     const IS_UNWRAPPED: bool = false;
     fn ex(self) -> T;
@@ -46,6 +47,28 @@ impl ToElixir<Atom> for () {
 impl<A: Encoder, B: Into<A>> ToElixir<Vec<A>> for Vec<B> {
     fn ex(self) -> Vec<A> {
         self.into_iter().map(|v| v.into()).collect()
+    }
+}
+
+impl<T1, T2, E1, E2> ToElixir<(E1, E2)> for (T1, T2)
+where
+    T1: ToElixir<E1>,
+    T2: ToElixir<E2>,
+    E1: Encoder,
+    E2: Encoder,
+{
+    fn ex(self) -> (E1, E2) {
+        (self.0.ex(), self.1.ex())
+    }
+}
+
+impl<T, E> ToElixir<Option<E>> for Option<T>
+where
+    T: ToElixir<E>,
+    E: Encoder,
+{
+    fn ex(self) -> Option<E> {
+        self.map(|v| v.ex())
     }
 }
 

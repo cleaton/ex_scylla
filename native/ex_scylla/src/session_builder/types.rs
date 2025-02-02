@@ -21,6 +21,6 @@ pub type ScyllaSocketAddr = (ScyllaIpAddr, u16);
 impl ToRust<SocketAddr> for ScyllaSocketAddr {
     fn r(self) -> SocketAddr {
         let (sia, port) = self;
-        SocketAddr::new(sia.into(), port)
+        SocketAddr::new((&sia).into(), port)
     }
 }

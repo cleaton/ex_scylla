@@ -1,7 +1,6 @@
 use crate::utils::*;
 use rustler::types::Atom;
 use rustler::{NifTaggedEnum, NifTuple};
-use scylla::frame::value::SerializeValuesError;
 use scylla::transport::errors::{BadKeyspaceName, BadQuery, DbError};
 use scylla::transport::session::TranslationError;
 use scylla::{
@@ -18,32 +17,43 @@ rustler::atoms! {
 pub enum ScyllaQueryError {
     DbError(ScyllaDbError),
     BadQuery(ScyllaBadQuery),
-    IoError(String),
+    CqlRequestSerialization(String),
+    BodyExtensionsParseError(String),
+    EmptyPlan(String),
+    CqlResultParseError(String),
+    CqlErrorParseError(String),
+    MetadataError(String),
+    ConnectionPoolError(String),
     ProtocolError(String),
-    InvalidMessage(String),
     TimeoutError(String),
-    TooManyOrphanedStreamIds(String),
+    BrokenConnection(String),
     UnableToAllocStreamId(String),
     RequestTimeout(String),
-    TranslationError(ScyllaTranslationError),
+    NextRowError(String),
+    IntoLegacyQueryResultError(String),
+    Unknown(String),
 }
 
 to_elixir!(QueryError, ScyllaQueryError, |qe: QueryError| {
     match qe {
-        QueryError::DbError(dbe, _) => ScyllaQueryError::DbError(dbe.ex()),
+        QueryError::DbError(dbe, msg) => ScyllaQueryError::DbError(dbe.ex()),
         QueryError::BadQuery(bq) => ScyllaQueryError::BadQuery(bq.ex()),
-        QueryError::IoError(_) => ScyllaQueryError::IoError(qe.to_string()),
-        QueryError::ProtocolError(_) => ScyllaQueryError::ProtocolError(qe.to_string()),
-        QueryError::InvalidMessage(_) => ScyllaQueryError::InvalidMessage(qe.to_string()),
+        QueryError::CqlRequestSerialization(err) => ScyllaQueryError::CqlRequestSerialization(err.to_string()),
+        QueryError::BodyExtensionsParseError(err) => ScyllaQueryError::BodyExtensionsParseError(err.to_string()),
+        QueryError::EmptyPlan => ScyllaQueryError::EmptyPlan(qe.to_string()),
+        QueryError::CqlResultParseError(err) => ScyllaQueryError::CqlResultParseError(err.to_string()),
+        QueryError::CqlErrorParseError(err) => ScyllaQueryError::CqlErrorParseError(err.to_string()),
+        QueryError::MetadataError(err) => ScyllaQueryError::MetadataError(err.to_string()),
+        QueryError::ConnectionPoolError(err) => ScyllaQueryError::ConnectionPoolError(err.to_string()),
+        QueryError::ProtocolError(err) => ScyllaQueryError::ProtocolError(err.to_string()),
         QueryError::TimeoutError => ScyllaQueryError::TimeoutError(qe.to_string()),
-        QueryError::TooManyOrphanedStreamIds(_) => {
-            ScyllaQueryError::TooManyOrphanedStreamIds(qe.to_string())
-        }
-        QueryError::UnableToAllocStreamId => {
-            ScyllaQueryError::UnableToAllocStreamId(qe.to_string())
-        }
+        QueryError::BrokenConnection(err) => ScyllaQueryError::BrokenConnection(err.to_string()),
+        QueryError::UnableToAllocStreamId => ScyllaQueryError::UnableToAllocStreamId(qe.to_string()),
         QueryError::RequestTimeout(msg) => ScyllaQueryError::RequestTimeout(msg),
-        QueryError::TranslationError(err) => ScyllaQueryError::TranslationError(err.ex()),
+        QueryError::NextRowError(err) => ScyllaQueryError::NextRowError(err.to_string()),
+        #[allow(deprecated)]
+        QueryError::IntoLegacyQueryResultError(err) => ScyllaQueryError::IntoLegacyQueryResultError(err.to_string()),
+        _ => ScyllaQueryError::Unknown(qe.to_string()),
     }
 });
 
@@ -52,6 +62,7 @@ to_elixir!(QueryError, ScyllaQueryError, |qe: QueryError| {
 pub enum ScyllaTranslationError {
     NoRuleForAddress(String),
     InvalidAddressInRule(String),
+    Unknown(String),
 }
 
 to_elixir!(
@@ -60,10 +71,10 @@ to_elixir!(
     |te: TranslationError| {
         let msg = te.to_string();
         match te {
-            TranslationError::InvalidAddressInRule => {
-                ScyllaTranslationError::InvalidAddressInRule(msg)
-            }
-            TranslationError::NoRuleForAddress => ScyllaTranslationError::NoRuleForAddress(msg),
+            TranslationError::NoRuleForAddress(addr) => ScyllaTranslationError::NoRuleForAddress(addr.to_string()),
+            TranslationError::InvalidAddressInRule { translated_addr_str, reason } => 
+                ScyllaTranslationError::InvalidAddressInRule(format!("Failed to parse translated address: {}, reason: {}", translated_addr_str, reason)),
+            _ => ScyllaTranslationError::Unknown(te.to_string()),
         }
     }
 );
@@ -129,10 +140,10 @@ pub enum ScyllaBadQuery {
 
 to_elixir!(BadQuery, ScyllaBadQuery, |bq| {
     match bq {
-        BadQuery::SerializeValuesError(e) => ScyllaBadQuery::SerializeValuesError(e.ex()),
         BadQuery::ValuesTooLongForKey(_, _) => ScyllaBadQuery::ValuesTooLongForKey(bq.to_string()),
         BadQuery::BadKeyspaceName(bkn) => ScyllaBadQuery::BadKeyspaceName(bkn.ex()),
         BadQuery::Other(msg) => ScyllaBadQuery::Other(msg),
+        _ => ScyllaBadQuery::Other(bq.to_string()),
     }
 });
 
@@ -144,37 +155,19 @@ pub enum ScyllaSerializeValuesError {
     ParseError(String),
 }
 
-to_elixir!(
-    SerializeValuesError,
-    ScyllaSerializeValuesError,
-    |sve: SerializeValuesError| {
-        let msg = sve.to_string();
-        match sve {
-            SerializeValuesError::TooManyValues => ScyllaSerializeValuesError::TooManyValues(msg),
-            SerializeValuesError::MixingNamedAndNotNamedValues => {
-                ScyllaSerializeValuesError::MixingNamedAndNotNamedValues(msg)
-            }
-            SerializeValuesError::ValueTooBig(_) => ScyllaSerializeValuesError::ValueTooBig(msg),
-            SerializeValuesError::ParseError => ScyllaSerializeValuesError::ParseError(msg),
-        }
-    }
-);
-
 #[derive(NifTaggedEnum, Debug)]
 pub enum ScyllaNewSessionError {
     FailedToResolveAnyHostname(String),
     EmptyKnownNodesList(String),
     DbError(ScyllaDbError),
     BadQuery(ScyllaBadQuery),
-    IoError(String),
     ProtocolError(String),
-    InvalidMessage(String),
     TimeoutError(String),
-    TooManyOrphanedStreamIds(String),
     UnableToAllocStreamId(String),
     RequestTimeout(String),
-    TranslationError(ScyllaTranslationError),
+    Unknown(String),
 }
+
 to_elixir!(NewSessionError, ScyllaNewSessionError, |nse| {
     match nse {
         NewSessionError::FailedToResolveAnyHostname(_) => {
@@ -185,22 +178,16 @@ to_elixir!(NewSessionError, ScyllaNewSessionError, |nse| {
         }
         NewSessionError::DbError(dbe, _) => ScyllaNewSessionError::DbError(dbe.ex()),
         NewSessionError::BadQuery(bq) => ScyllaNewSessionError::BadQuery(bq.ex()),
-        NewSessionError::IoError(_) => ScyllaNewSessionError::IoError(nse.to_string()),
         NewSessionError::ProtocolError(_) => ScyllaNewSessionError::ProtocolError(nse.to_string()),
-        NewSessionError::InvalidMessage(_) => {
-            ScyllaNewSessionError::InvalidMessage(nse.to_string())
-        }
         NewSessionError::TimeoutError => ScyllaNewSessionError::TimeoutError(nse.to_string()),
-        NewSessionError::TooManyOrphanedStreamIds(_) => {
-            ScyllaNewSessionError::TooManyOrphanedStreamIds(nse.to_string())
-        }
         NewSessionError::UnableToAllocStreamId => {
             ScyllaNewSessionError::UnableToAllocStreamId(nse.to_string())
         }
         NewSessionError::RequestTimeout(msg) => ScyllaNewSessionError::RequestTimeout(msg),
-        NewSessionError::TranslationError(te) => ScyllaNewSessionError::TranslationError(te.ex()),
+        _ => ScyllaNewSessionError::Unknown(nse.to_string()),
     }
 });
+
 #[derive(NifTaggedEnum, Debug)]
 pub enum ScyllaBadKeyspaceName {
     Empty(String),
@@ -217,22 +204,29 @@ to_elixir!(
             BadKeyspaceName::Empty => ScyllaBadKeyspaceName::Empty(msg),
             BadKeyspaceName::TooLong(_, _) => ScyllaBadKeyspaceName::TooLong(msg),
             BadKeyspaceName::IllegalCharacter(_, _) => ScyllaBadKeyspaceName::IllegalCharacter(msg),
+            _ => ScyllaBadKeyspaceName::IllegalCharacter(msg), // Catch-all for future variants
         }
     }
 );
+
 #[derive(NifTaggedEnum, Debug)]
 pub enum ScyllaPartitionKeyError {
-    NoPkIndexValue(String),
-    ValueTooLong(String),
+    PartitionKeyExtraction(String),
+    TokenCalculation(String),
+    Serialization(String),
+    Unknown(String),
 }
+
 to_elixir!(
     PartitionKeyError,
     ScyllaPartitionKeyError,
     |pke: PartitionKeyError| {
         let msg = pke.to_string();
         match pke {
-            PartitionKeyError::NoPkIndexValue(_, _) => ScyllaPartitionKeyError::NoPkIndexValue(msg),
-            PartitionKeyError::ValueTooLong(_) => ScyllaPartitionKeyError::ValueTooLong(msg),
+            PartitionKeyError::PartitionKeyExtraction(err) => ScyllaPartitionKeyError::PartitionKeyExtraction(err.to_string()),
+            PartitionKeyError::TokenCalculation(err) => ScyllaPartitionKeyError::TokenCalculation(err.to_string()),
+            PartitionKeyError::Serialization(err) => ScyllaPartitionKeyError::Serialization(err.to_string()),
+            _ => ScyllaPartitionKeyError::Unknown(msg),
         }
     }
 );
@@ -250,4 +244,11 @@ impl From<ScyllaError> for rustler::Error {
     fn from(se: ScyllaError) -> Self {
         rustler::Error::Term(Box::new(se))
     }
+}
+
+#[derive(NifTaggedEnum, Debug)]
+pub enum ScyllaRowError {
+    DeserializationError(String),
+    TypeCheckError(String),
+    QueryError(ScyllaQueryError),
 }
