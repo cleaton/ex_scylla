@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use rustler::NifTaggedEnum;
-use scylla::transport::session::PoolSize;
+use scylla::client::PoolSize;
 
 #[derive(NifTaggedEnum)]
 pub enum ScyllaPoolSize {

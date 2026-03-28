@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::time::Duration;
 
 use super::runtime;
@@ -8,12 +7,12 @@ use crate::prepared_statement::types::*;
 use crate::utils::*;
 use rustler::env::{OwnedEnv, SavedTerm};
 use rustler::types::atom;
-use rustler::{Atom, Encoder, Env, Error, NifResult, ResourceArc, Term};
-use scylla::frame::response::result::CqlValue;
+use rustler::{Atom, Encoder, Env, NifResult, ResourceArc, Term};
 use scylla::statement::batch::Batch;
-use scylla::Session;
-use scylla::frame::value::ValueList;
+use scylla::client::session::Session;
+use scylla::value::CqlValue;
 use types::*;
+use scylla::response::PagingStateResponse;
 
 #[rustler::nif]
 fn s_await_schema_agreement<'a>(
@@ -24,7 +23,10 @@ fn s_await_schema_agreement<'a>(
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         let res = session.await_schema_agreement().await;
-        res.ex()
+        match res {
+            Ok(_id) => ScyllaResult::Unwrapped(atom::ok()),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
@@ -38,10 +40,15 @@ fn s_await_timed_schema_agreement<'a>(
 ) -> NifResult<Atom> {
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
-        let res = session
-            .await_timed_schema_agreement(Duration::from_millis(timeout_ms))
-            .await;
-        res.map_err(|e| e.ex())
+        let res = tokio::time::timeout(
+            Duration::from_millis(timeout_ms),
+            session.await_schema_agreement()
+        ).await;
+        match res {
+            Ok(Ok(_id)) => ScyllaResult::Ok(true),
+            Ok(Err(e)) => ScyllaResult::Err(e.to_string()),
+            Err(_) => ScyllaResult::Err("timeout".to_string()),
+        }
     });
     Ok(atom::ok())
 }
@@ -52,32 +59,46 @@ fn s_batch<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     batch: ResourceArc<BatchResource>,
-    values: Vec<Vec<ScyllaValue>>,
+    values: Vec<Vec<Term<'a>>>,
 ) -> NifResult<Atom> {
-    let cql_values = values
-        .into_iter()
-        .map(|svv| {
-            svv.into_iter()
-                .map(|sv| sv.try_into().map_err(|e| Error::from(e)))
-                .collect::<Result<Vec<CqlValue>, Error>>()
-        })
-        .collect::<Result<Vec<Vec<CqlValue>>, Error>>()?;
+    let mut row_values: Vec<Vec<CqlValue>> = Vec::new();
+    for row_terms in values {
+        let mut cql_row: Vec<CqlValue> = Vec::new();
+        for term in row_terms {
+            let sv: ScyllaValue = term.decode()?;
+            cql_row.push(sv.into());
+        }
+        row_values.push(cql_row);
+    }
+    
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         let batch: &Batch = &batch.0;
-        let res = session.batch(batch, cql_values).await;
-        res.ex()
+        let res = session.batch(batch, row_values).await;
+        match res {
+            Ok(qr) => ScyllaResult::Ok(qr.ex()),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
 
 #[rustler::nif]
-fn s_calculate_token(session: ResourceArc<SessionResource>, prepared: ResourceArc<PreparedStatementResource>, values: Vec<ScyllaValue>) -> NifResult<Option<ScyllaToken>> {
-    let session: &Session = &session.0;
-    let values = values.r()?;
-    let serialized = values.serialized().map_err(|e| Error::Term(Box::new(e.ex())))?;
-    let r = session.calculate_token(&prepared.0, &serialized);
-    r.map(|ot| ot.map(|t| ScyllaToken::from(t))).map_err(|e| Error::Term(Box::new(e.ex())))
+fn s_calculate_token<'a>(
+    _session: ResourceArc<SessionResource>, 
+    prepared: ResourceArc<PreparedStatementResource>, 
+    values: Vec<Term<'a>>
+) -> NifResult<Option<ScyllaToken>> {
+    let mut cql_values: Vec<CqlValue> = Vec::new();
+    for term in values {
+        let sv: ScyllaValue = term.decode()?;
+        cql_values.push(sv.into());
+    }
+    
+    match prepared.0.calculate_token(&cql_values) {
+        Ok(token) => Ok(token.map(|t| t.into())),
+        Err(_) => Ok(None),
+    }
 }
 
 #[rustler::nif]
@@ -89,7 +110,10 @@ fn s_check_schema_agreement<'a>(
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         let res = session.check_schema_agreement().await;
-        res.map_err(|e| e.ex())
+        match res {
+            Ok(agree) => ScyllaResult::Ok(agree.is_some()),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
@@ -100,19 +124,24 @@ fn s_execute<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     prepared: ResourceArc<PreparedStatementResource>,
-    values: Vec<ScyllaValue>,
+    values: Vec<Term<'a>>,
 ) -> NifResult<Atom> {
-    let values = values.r()?;
+    let mut cql_values: Vec<CqlValue> = Vec::new();
+    for term in values {
+        let sv: ScyllaValue = term.decode()?;
+        cql_values.push(sv.into());
+    }
+
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
-        let res = session.execute(&prepared.0, values).await;
-        res.ex()
+        let res = session.execute_unpaged(&prepared.0, cql_values).await;
+        match res {
+            Ok(qr) => ScyllaResult::Ok(qr.ex()),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
-
-//s_execute_iter(_session, _prepared, _values), do: e()
-// does it make sense to expose iterator as a resourcearc?
 
 #[rustler::nif]
 fn s_execute_paged<'a>(
@@ -120,16 +149,30 @@ fn s_execute_paged<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     prepared: ResourceArc<PreparedStatementResource>,
-    values: Vec<ScyllaValue>,
+    values: Vec<Term<'a>>,
     paging_state: Option<ScyllaPageState>,
 ) -> NifResult<Atom> {
-    let values = values.r()?;
+    let mut cql_values: Vec<CqlValue> = Vec::new();
+    for term in values {
+        let sv: ScyllaValue = term.decode()?;
+        cql_values.push(sv.into());
+    }
+    let paging_state = paging_state.map(|s| s.0).unwrap_or(scylla::response::PagingState::start());
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         let res = session
-            .execute_paged(&prepared.0, values, paging_state.r())
+            .execute_single_page(&prepared.0, cql_values, paging_state)
             .await;
-        res.ex()
+        match res {
+            Ok((qr, psr)) => {
+                let mut scylla_qr = qr.ex();
+                if let PagingStateResponse::HasMorePages { state } = psr {
+                    scylla_qr.paging_state = state.as_bytes_slice().map(|arc| ScyllaBinary(arc.to_vec()));
+                }
+                ScyllaResult::Ok(scylla_qr)
+            },
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
@@ -142,67 +185,14 @@ fn s_fetch_schema_version<'a>(
 ) -> NifResult<Atom> {
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
-        let res = session.fetch_schema_version().await;
-        res.ex()
+        let res = session.await_schema_agreement().await;
+        match res {
+            Ok(id) => ScyllaResult::Ok(ScyllaBinary(id.as_bytes().to_vec())),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
-
-// TODO: define clusterdata types
-//s_get_cluster_data(), do: e()
-//#[rustler::nif]
-//fn s_get_cluster_data<'a>(
-//    env: Env<'a>,
-//    opaque: Term<'a>,
-//    session: ResourceArc<SessionResource>,
-//) -> NifResult<Atom> {
-//    let session: &Session = &session.0;
-//    session.get_cluster_data();
-//    Ok(atom::ok())
-//}
-
-// TODO: define metrics types
-//s_get_metrics(), do: e()
-//#[rustler::nif]
-//fn s_get_metrics<'a>(
-//    env: Env<'a>,
-//    opaque: Term<'a>,
-//    session: ResourceArc<SessionResource>,
-//) -> NifResult<Atom> {
-//    let session: &Session = &session.0;
-//    session.get_metrics()
-//}
-
-// TODO: define tracing types
-//s_get_tracing_info(), do: e()
-//#[rustler::nif]
-//fn s_get_tracing_info<'a>(
-//    env: Env<'a>,
-//    opaque: Term<'a>,
-//    session: ResourceArc<SessionResource>,
-//) -> NifResult<Atom> {
-//    async_elixir!(env, opaque, {
-//        let session: &Session = &session.0;
-//        let res = session.get_tracing_info().await;
-//        res.ex()
-//    });
-//    Ok(atom::ok())
-//}
-
-// TODO: define tracing types & GetTracingConfig types
-//s_get_tracing_info_custom(), do: e()
-//fn s_get_tracing_info_custom<'a>(
-//    env: Env<'a>,
-//    opaque: Term<'a>,
-//    session: ResourceArc<SessionResource>,
-//) -> NifResult<Atom> {
-//    async_elixir!(env, opaque, {
-//        let session: &Session = &session.0;
-//        let res = session.get_tracing_info_custom().await;
-//        res.ex()
-//    });
-//    Ok(atom::ok())
-//}
 
 #[rustler::nif]
 fn s_prepare<'a>(
@@ -214,7 +204,10 @@ fn s_prepare<'a>(
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         let res = session.prepare(query).await;
-        res.ex()
+        match res {
+            Ok(ps) => ScyllaResult::Ok(ResourceArc::new(PreparedStatementResource(ps))),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
@@ -225,35 +218,23 @@ fn s_query<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     query: ScyllaQuery,
-    values: Vec<ScyllaValue>,
+    values: Vec<Term<'a>>,
 ) -> NifResult<Atom> {
-    let values = values.r()?;
+    let mut cql_values: Vec<CqlValue> = Vec::new();
+    for term in values {
+        let sv: ScyllaValue = term.decode()?;
+        cql_values.push(sv.into());
+    }
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
-        let res = session.query(query, values).await;
-        res.ex()
+        let res = session.query_unpaged(query, cql_values).await;
+        match res {
+            Ok(qr) => ScyllaResult::Ok(qr.ex()),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
-
-//s_query_iter(), do: e()
-// does it make sense to expose query_iterator as a resourcearc?
-//#[rustler::nif]
-//fn s_query_iter<'a>(
-//    env: Env<'a>,
-//    opaque: Term<'a>,
-//    session: ResourceArc<SessionResource>,
-//    query: String,
-//    values: Vec<ScyllaValue>,
-//) -> NifResult<Atom> {
-//    let values = values.r()?;
-//    async_elixir!(env, opaque, {
-//        let session: &Session = &session.0;
-//        let res = session.query_iter(query, values, paging_state.r()).await;
-//        res.ex()
-//    });
-//    Ok(atom::ok())
-//}
 
 #[rustler::nif]
 fn s_query_paged<'a>(
@@ -261,14 +242,28 @@ fn s_query_paged<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     query: ScyllaQuery,
-    values: Vec<ScyllaValue>,
+    values: Vec<Term<'a>>,
     paging_state: Option<ScyllaPageState>,
 ) -> NifResult<Atom> {
-    let values = values.r()?;
+    let mut cql_values: Vec<CqlValue> = Vec::new();
+    for term in values {
+        let sv: ScyllaValue = term.decode()?;
+        cql_values.push(sv.into());
+    }
+    let paging_state = paging_state.map(|s| s.0).unwrap_or(scylla::response::PagingState::start());
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
-        let res = session.query_paged(query, values, paging_state.r()).await;
-        res.ex()
+        let res = session.query_single_page(query, cql_values, paging_state).await;
+        match res {
+            Ok((qr, psr)) => {
+                let mut scylla_qr = qr.ex();
+                if let PagingStateResponse::HasMorePages { state } = psr {
+                    scylla_qr.paging_state = state.as_bytes_slice().map(|arc| ScyllaBinary(arc.to_vec()));
+                }
+                ScyllaResult::Ok(scylla_qr)
+            },
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
@@ -282,7 +277,10 @@ fn s_refresh_metadata<'a>(
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         let res = session.refresh_metadata().await;
-        res.ex()
+        match res {
+            Ok(_) => ScyllaResult::Unwrapped(atom::ok()),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }
@@ -298,7 +296,10 @@ fn s_use_keyspace<'a>(
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         let res = session.use_keyspace(keyspace_name, case_sensitive).await;
-        res.ex()
+        match res {
+            Ok(_) => ScyllaResult::Unwrapped(atom::ok()),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
     });
     Ok(atom::ok())
 }

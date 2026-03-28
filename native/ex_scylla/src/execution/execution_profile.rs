@@ -1,7 +1,7 @@
 use std::{cell::Cell, sync::Mutex};
 
 use rustler::ResourceArc;
-use scylla::ExecutionProfile;
+use scylla::client::execution_profile::ExecutionProfile;
 
 use super::{
     execution_profile_builder::ExecutionProfileBuilderResource,

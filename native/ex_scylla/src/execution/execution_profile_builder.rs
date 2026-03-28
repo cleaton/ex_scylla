@@ -1,7 +1,7 @@
 
 use crate::types::*;
 use rustler::ResourceArc;
-use scylla::execution_profile::ExecutionProfileBuilder;
+use scylla::client::execution_profile::ExecutionProfileBuilder;
 use scylla::statement::SerialConsistency;
 use std::cell::Cell;
 use std::ops::Deref;

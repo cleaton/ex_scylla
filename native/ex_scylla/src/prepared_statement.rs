@@ -4,8 +4,8 @@ use rustler::Atom;
 use rustler::Error;
 use rustler::NifResult;
 use rustler::ResourceArc;
-use scylla::frame::value::ValueList;
-use scylla::prepared_statement::PreparedStatement;
+use rustler::Term;
+use scylla::statement::prepared::PreparedStatement;
 
 pub mod types;
 use crate::consts::*;
@@ -14,18 +14,20 @@ use crate::session::types::*;
 use crate::types::*;
 use crate::utils::*;
 use types::*;
+use scylla::value::CqlValue;
 
 #[rustler::nif]
-fn ps_compute_partition_key(
+fn ps_compute_partition_key<'a>(
     ps: ResourceArc<PreparedStatementResource>,
-    bound_values: Vec<ScyllaValue>,
+    bound_values: Vec<Term<'a>>,
 ) -> NifResult<ScyllaBinary> {
     let ps: &PreparedStatement = &ps.0;
-    let bound_values = bound_values.r()?;
-    let bound_values = bound_values
-        .serialized()
-        .map_err(|sve| Error::Term(Box::new(sve.ex())))?;
-    ps.compute_partition_key(&bound_values)
+    let mut cql_values: Vec<CqlValue> = Vec::new();
+    for term in bound_values {
+        let sv: ScyllaValue = term.decode()?;
+        cql_values.push(sv.into());
+    }
+    ps.compute_partition_key(&cql_values)
         .map(|b| b.into())
         .map_err(|e| Error::Term(Box::new(e.ex())))
 }
@@ -75,9 +77,7 @@ fn ps_is_confirmed_lwt(ps: ResourceArc<PreparedStatementResource>) -> bool {
 fn ps_disable_paging(
     ps: ResourceArc<PreparedStatementResource>,
 ) -> ResourceArc<PreparedStatementResource> {
-    let mut ps: PreparedStatement = ps.0.to_owned();
-    ps.disable_paging();
-    ps.ex()
+    ps
 }
 
 #[rustler::nif]
@@ -107,7 +107,7 @@ fn ps_get_keyspace_name(ps: ResourceArc<PreparedStatementResource>) -> Option<St
 #[rustler::nif]
 fn ps_get_page_size(ps: ResourceArc<PreparedStatementResource>) -> Option<i32> {
     let ps: &PreparedStatement = &ps.0;
-    ps.get_page_size()
+    Some(ps.get_page_size())
 }
 
 #[rustler::nif]
@@ -123,7 +123,7 @@ fn ps_get_prepare_tracing_ids(ps: ResourceArc<PreparedStatementResource>) -> Vec
 #[rustler::nif]
 fn ps_get_prepared_metadata(ps: ResourceArc<PreparedStatementResource>) -> ScyllaPreparedMetadata {
     let ps: &PreparedStatement = &ps.0;
-    ps.get_prepared_metadata().into()
+    ps.into()
 }
 
 #[rustler::nif]

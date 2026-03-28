@@ -43,6 +43,13 @@ impl ToElixir<Atom> for () {
     }
 }
 
+impl ToElixir<bool> for bool {
+    const IS_UNWRAPPED: bool = true;
+    fn ex(self) -> bool {
+        self
+    }
+}
+
 impl<A: Encoder, B: Into<A>> ToElixir<Vec<A>> for Vec<B> {
     fn ex(self) -> Vec<A> {
         self.into_iter().map(|v| v.into()).collect()

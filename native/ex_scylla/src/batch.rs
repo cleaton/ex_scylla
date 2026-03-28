@@ -1,6 +1,6 @@
 use rustler::Atom;
 use rustler::ResourceArc;
-use scylla::batch::{Batch, BatchStatement};
+use scylla::statement::batch::{Batch, BatchStatement};
 
 pub mod types;
 use crate::consts::*;

@@ -97,7 +97,7 @@ defmodule ExScylla.Statement.Query do
            return_spec: pos_integer() | nil,
            doc_example: """
            iex> q = Query.new("SELECT * FROM test;")
-           iex> nil = Query.get_page_size(q)
+           iex> 5000 = Query.get_page_size(q)
            iex> q = Query.set_page_size(q, 10)
            iex> 10 = Query.get_page_size(q)
            """

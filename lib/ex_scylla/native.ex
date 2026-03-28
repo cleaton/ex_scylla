@@ -162,7 +162,7 @@ defmodule ExScylla.Native do
       def dpb_new(), do: e()
       def dpb_permit_dc_failover(_dpb, _permit), do: e()
       def dpb_prefer_datacenter(_dpb, _datacenter_name), do: e()
-      def dpb_prefer_rack(_dpb, _rack_name), do: e()
+      def dpb_prefer_datacenter_and_rack(_dpb, _datacenter_name, _rack_name), do: e()
       def dpb_token_aware(_dpb, _is_token_aware), do: e()
       # LatencyAwarenessBuilder
       def lab_exclusion_threshold(_lab, _exclusion_threshold), do: e()

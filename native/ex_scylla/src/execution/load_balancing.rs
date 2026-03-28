@@ -5,9 +5,9 @@ use std::sync::MutexGuard;
 use std::time::Duration;
 
 use rustler::ResourceArc;
-use scylla::load_balancing::DefaultPolicy;
-use scylla::load_balancing::LoadBalancingPolicy;
-use scylla::load_balancing::{DefaultPolicyBuilder, LatencyAwarenessBuilder};
+use scylla::policies::load_balancing::DefaultPolicy;
+use scylla::policies::load_balancing::LoadBalancingPolicy;
+use scylla::policies::load_balancing::{DefaultPolicyBuilder, LatencyAwarenessBuilder};
 
 pub struct DefaultPolicyBuilderResource(pub Mutex<Cell<DefaultPolicyBuilder>>);
 pub struct LatencyAwarenessPolicyBuilderResource(pub Mutex<Cell<LatencyAwarenessBuilder>>);
@@ -95,12 +95,13 @@ fn dpb_prefer_datacenter(
 }
 
 #[rustler::nif]
-fn dpb_prefer_rack(
+fn dpb_prefer_datacenter_and_rack(
     dpbr: ResourceArc<DefaultPolicyBuilderResource>,
+    datacenter_name: String,
     rack_name: String,
 ) -> ResourceArc<DefaultPolicyBuilderResource> {
     use_builder!(dpbr, |dpb: DefaultPolicyBuilder| {
-        dpb.prefer_rack(rack_name)
+        dpb.prefer_datacenter_and_rack(datacenter_name, rack_name)
     });
     dpbr
 }
@@ -181,4 +182,3 @@ fn lab_update_rate(
 fn dp_default() -> ResourceArc<LoadBalancingPolicyResource> {
     ResourceArc::new(LoadBalancingPolicyResource(Arc::new(DefaultPolicy::default())))
 }
-

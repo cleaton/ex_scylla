@@ -1,7 +1,7 @@
+use crate::utils::*;
 use rustler::ResourceArc;
-use scylla::query::Query;
+use scylla::statement::unprepared::Statement as Query;
 
-use crate::utils::{to_elixir, ToElixir};
 pub struct QueryResource(pub Query);
 
 to_elixir!(Query, ResourceArc<QueryResource>, |q: Query| {

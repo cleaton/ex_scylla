@@ -1,8 +1,9 @@
 use rustler::{NifStruct, ResourceArc};
 use scylla::{
-    frame::response::result::{PartitionKeyIndex, PreparedMetadata},
-    statement::prepared_statement::PreparedStatement,
+    frame::response::result::PartitionKeyIndex,
+    statement::prepared::PreparedStatement,
 };
+use scylla_cql::frame::response::result::PreparedMetadata;
 
 use crate::{
     session::types::*,
@@ -21,27 +22,24 @@ to_elixir!(
 #[module = "ExScylla.Types.PreparedMetadata"]
 pub struct ScyllaPreparedMetadata {
     pub col_count: usize,
-    /// pk_indexes are sorted by `index` and can be reordered in partition key order
-    /// using `sequence` field
     pub pk_indexes: Vec<ScyllaPartitionKeyIndex>,
     pub col_specs: Vec<ScyllaColumnSpec>,
 }
 
-impl From<&PreparedMetadata> for ScyllaPreparedMetadata {
-    fn from(pm: &PreparedMetadata) -> Self {
+impl From<&PreparedStatement> for ScyllaPreparedMetadata {
+    fn from(ps: &PreparedStatement) -> Self {
+        let col_specs = ps.get_variable_col_specs();
+        let pk_indexes = ps.get_variable_pk_indexes();
+        
         ScyllaPreparedMetadata {
-            col_count: pm.col_count,
-            pk_indexes: pm
-                .pk_indexes
-                .to_owned()
-                .into_iter()
-                .map(|pki| pki.into())
+            col_count: col_specs.iter().count(),
+            pk_indexes: pk_indexes
+                .iter()
+                .map(|pki| (*pki).into())
                 .collect(),
-            col_specs: pm
-                .col_specs
-                .to_owned()
-                .into_iter()
-                .map(|cs| cs.ex())
+            col_specs: col_specs
+                .iter()
+                .map(|cs| cs.clone().ex())
                 .collect(),
         }
     }
@@ -50,9 +48,7 @@ impl From<&PreparedMetadata> for ScyllaPreparedMetadata {
 #[derive(NifStruct, Debug)]
 #[module = "ExScylla.Types.PartitionKeyIndex"]
 pub struct ScyllaPartitionKeyIndex {
-    /// index in the serialized values
     pub index: u16,
-    /// sequence number in partition key
     pub sequence: u16,
 }
 

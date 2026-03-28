@@ -72,19 +72,19 @@ defmodule ExScylla.LoadBalancing.DefaultPolicyBuilder do
     return_spec: T.default_policy_builder(),
     doc_example: """
     iex> dpb = DefaultPolicyBuilder.new()
-    ...>        |> DefaultPolicyBuilder.prefer_datacenter(true)
+    ...>        |> DefaultPolicyBuilder.prefer_datacenter("dc1")
     iex> true = is_reference(dpb)
     """
   )
 
   native_f(
-    func: :prefer_rack,
-    args: [epb, rack_name],
-    args_spec: [T.default_policy_builder(), String.t()],
+    func: :prefer_datacenter_and_rack,
+    args: [epb, datacenter_name, rack_name],
+    args_spec: [T.default_policy_builder(), String.t(), String.t()],
     return_spec: T.default_policy_builder(),
     doc_example: """
     iex> dpb = DefaultPolicyBuilder.new()
-    ...>        |> DefaultPolicyBuilder.prefer_rack(true)
+    ...>        |> DefaultPolicyBuilder.prefer_datacenter_and_rack("dc1", "rack1")
     iex> true = is_reference(dpb)
     """
   )

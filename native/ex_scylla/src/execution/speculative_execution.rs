@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use rustler::{NifStruct, NifUntaggedEnum};
-use scylla::speculative_execution::{
+use scylla::policies::speculative_execution::{
     PercentileSpeculativeExecutionPolicy, SimpleSpeculativeExecutionPolicy,
     SpeculativeExecutionPolicy,
 };

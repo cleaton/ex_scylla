@@ -205,7 +205,7 @@ rustler::init!(
         load_balancing::dpb_new,
         load_balancing::dpb_permit_dc_failover,
         load_balancing::dpb_prefer_datacenter,
-        load_balancing::dpb_prefer_rack,
+        load_balancing::dpb_prefer_datacenter_and_rack,
         load_balancing::dpb_token_aware,
         // LatencyAwarenessBuilder
         load_balancing::lab_exclusion_threshold,

@@ -142,7 +142,7 @@ native_f func: :get_execution_profile_handle,
            return_spec: pos_integer() | nil,
            example_setup: :ps_setup,
            doc_example: """
-           iex> nil = Prepared.get_page_size(ps)
+           iex> 5000 = Prepared.get_page_size(ps)
            iex> ps = Prepared.set_page_size(ps, 10)
            iex> 10 = Prepared.get_page_size(ps)
            """

@@ -1,32 +1,31 @@
 pub mod types;
 use rustler::env::{OwnedEnv, SavedTerm};
-use scylla::execution_profile::ExecutionProfileHandle;
-//use consistency::Consistency;
+use scylla::client::execution_profile::ExecutionProfileHandle;
 use super::runtime;
 use crate::execution::execution_profile_handle::ExecutionProfileHandleResource;
 use crate::execution::pool_size::ScyllaPoolSize;
 use rustler::types::atom;
 use rustler::{Atom, Encoder, Env, NifResult, ResourceArc, Term};
-use scylla::SessionBuilder;
+use scylla::client::session_builder::SessionBuilder;
 use std::net::SocketAddr;
 use std::num::NonZeroU32;
 use std::sync::Mutex;
 use std::time::Duration;
-//use rustler::types::LocalPid;
 use crate::types::*;
 use crate::utils::*;
 use std::cell::Cell;
 use types::*;
+use crate::session::types::ScyllaSocketAddr;
 
 macro_rules! use_builder {
     ($sbr:ident, $e:expr) => {
-        let guard = $sbr.lock().unwrap();
+        let guard = $sbr.0.lock().unwrap();
         guard.set($e(guard.take()));
         drop(guard);
     };
 }
 
-// SesisonBuilder methods
+// SessionBuilder methods
 #[rustler::nif]
 fn sb_default_execution_profile_handle(
     sbr: ResourceArc<SessionBuilderResource>,
@@ -52,7 +51,7 @@ fn sb_auto_schema_agreement_timeout(
     timeout_ms: u64,
 ) -> ResourceArc<SessionBuilderResource> {
     use_builder!(sbr, |sb: SessionBuilder| {
-        sb.auto_schema_agreement_timeout(Duration::from_millis(timeout_ms))
+        sb.schema_agreement_timeout(Duration::from_millis(timeout_ms))
     });
     sbr
 }
@@ -63,7 +62,7 @@ fn sb_build<'a>(
     opaque: Term<'a>,
     sbr: ResourceArc<SessionBuilderResource>,
 ) -> NifResult<Atom> {
-    let sb: SessionBuilder = sbr.lock().unwrap().take();
+    let sb: SessionBuilder = sbr.0.lock().unwrap().take();
     async_elixir!(env, opaque, {
         let res = sb.build().await;
         res.ex()
@@ -93,19 +92,6 @@ fn sb_connection_timeout(
     sbr
 }
 
-/*
-#[rustler::nif]
-fn sb_default_execution_profile_handle(
-    sbr: ResourceArc<SessionBuilderResource>,
-    profile_handle: ExecutionProfileHandle,
-) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| {
-        sb.default_execution_profile_handle(profile_handle)
-    });
-    sbr
-}
-*/
-
 #[rustler::nif]
 fn sb_disallow_shard_aware_port(
     sbr: ResourceArc<SessionBuilderResource>,
@@ -126,17 +112,6 @@ fn sb_fetch_schema_metadata(
     });
     sbr
 }
-
-/*
-#[rustler::nif]
-fn sb_host_filter(
-    sbr: ResourceArc<SessionBuilderResource>,
-    filter: Arc<dyn HostFilter>,
-) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| { sb.host_filter(filter) });
-    sbr
-}
- */
 
 #[rustler::nif]
 fn sb_keepalive_interval(
@@ -214,17 +189,6 @@ fn sb_known_nodes_addr(
     sbr
 }
 
-/*
-#[rustler::nif]
-fn sb_load_balancing(
-    sbr: ResourceArc<SessionBuilderResource>,
-    policy: ScyllaLoadBalancingPolicy,
-) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| { sb.load_balancing(policy.r()) });
-    sbr
-}
-*/
-
 #[rustler::nif]
 fn sb_new() -> ResourceArc<SessionBuilderResource> {
     ResourceArc::new(SessionBuilderResource(Mutex::new(Cell::new(
@@ -235,7 +199,7 @@ fn sb_new() -> ResourceArc<SessionBuilderResource> {
 fn sb_no_auto_schema_agreement(
     sbr: ResourceArc<SessionBuilderResource>,
 ) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| { sb.no_auto_schema_agreement() });
+    use_builder!(sbr, |sb: SessionBuilder| { sb.auto_await_schema_agreement(false) });
     sbr
 }
 #[rustler::nif]

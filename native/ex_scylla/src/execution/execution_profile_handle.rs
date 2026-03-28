@@ -1,5 +1,5 @@
 use rustler::ResourceArc;
-use scylla::execution_profile::ExecutionProfileHandle;
+use scylla::client::execution_profile::ExecutionProfileHandle;
 use std::cell::Cell;
 use std::sync::Mutex;
 
