@@ -3,6 +3,7 @@ use std::time::Duration;
 use super::runtime;
 pub mod types;
 use crate::batch::types::BatchResource;
+use crate::execution::execution_profile_handle::ExecutionProfileHandleResource;
 use crate::prepared_statement::types::*;
 use crate::utils::*;
 use rustler::env::{OwnedEnv, SavedTerm};
@@ -102,6 +103,28 @@ fn s_calculate_token<'a>(
 }
 
 #[rustler::nif]
+pub fn s_calculate_token_for_partition_key<'a>(
+    session: ResourceArc<SessionResource>,
+    keyspace: String,
+    table: String,
+    partition_key: Vec<Term<'a>>,
+) -> NifResult<Option<ScyllaToken>> {
+    let mut cql_values: Vec<CqlValue> = Vec::new();
+    for term in partition_key {
+        let sv: ScyllaValue = term.decode()?;
+        cql_values.push(sv.into());
+    }
+
+    let session: &Session = &session.0;
+    let cluster_state = session.get_cluster_state();
+
+    match cluster_state.compute_token(&keyspace, &table, &cql_values) {
+        Ok(token) => Ok(Some(token.into())),
+        Err(_) => Ok(None),
+    }
+}
+
+#[rustler::nif]
 fn s_check_schema_agreement<'a>(
     env: Env<'a>,
     opaque: Term<'a>,
@@ -171,6 +194,72 @@ fn s_execute_paged<'a>(
                 }
                 ScyllaResult::Ok(scylla_qr)
             },
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
+    });
+    Ok(atom::ok())
+}
+
+#[rustler::nif]
+fn s_get_cluster_state(session: ResourceArc<SessionResource>) -> ScyllaClusterState {
+    let session: &Session = &session.0;
+    (&*session.get_cluster_state()).into()
+}
+
+#[rustler::nif]
+fn s_get_default_execution_profile_handle(
+    session: ResourceArc<SessionResource>,
+) -> ResourceArc<ExecutionProfileHandleResource> {
+    let session: &Session = &session.0;
+    ResourceArc::new(ExecutionProfileHandleResource(
+        session.get_default_execution_profile_handle().clone(),
+    ))
+}
+
+#[rustler::nif]
+fn s_prepare_batch<'a>(
+    env: Env<'a>,
+    opaque: Term<'a>,
+    session: ResourceArc<SessionResource>,
+    batch: ResourceArc<BatchResource>,
+) -> NifResult<Atom> {
+    async_elixir!(env, opaque, {
+        let session: &Session = &session.0;
+        let batch: &Batch = &batch.0;
+        let res = session.prepare_batch(batch).await;
+        match res {
+            Ok(b) => ScyllaResult::Ok(ResourceArc::new(BatchResource(b))),
+            Err(e) => ScyllaResult::Err(e.to_string()),
+        }
+    });
+    Ok(atom::ok())
+}
+
+#[rustler::nif]
+fn s_get_keyspace(session: ResourceArc<SessionResource>) -> Option<String> {
+    let session: &Session = &session.0;
+    session.get_keyspace().map(|s| s.to_string())
+}
+
+#[rustler::nif]
+fn s_get_metrics(session: ResourceArc<SessionResource>) -> ScyllaMetrics {
+    let session: &Session = &session.0;
+    (&*session.get_metrics()).into()
+}
+
+#[rustler::nif]
+fn s_get_tracing_info<'a>(
+    env: Env<'a>,
+    opaque: Term<'a>,
+    session: ResourceArc<SessionResource>,
+    tracing_id: ScyllaBinary,
+) -> NifResult<Atom> {
+    let tracing_id = uuid::Uuid::from_slice(&tracing_id.0).map_err(|_| rustler::Error::Atom("invalid_uuid"))?;
+    async_elixir!(env, opaque, {
+        let session: &Session = &session.0;
+        let res = session.get_tracing_info(&tracing_id).await;
+        match res {
+            Ok(ti) => ScyllaResult::Ok(ScyllaTracingInfo::from(ti)),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
     });

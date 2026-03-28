@@ -27,34 +27,33 @@ defmodule ExScylla.Statement.Prepared do
            """
 
 native_f func: :get_execution_profile_handle,
-           args: [ps],
-           args_spec: [T.prepared_statement()],
-           return_spec: T.execution_profile_handle() | nil,
-           example_setup: :ps_setup,
-           doc_example: """
-           iex> eph = ExecutionProfile.builder()
-           ...>          |> ExecutionProfileBuilder.build()
-           ...>          |> ExecutionProfile.into_handle()
-           iex> ps |> Prepared.set_execution_profile_handle(eph)
-           ...>    |> Prepared.get_execution_profile_handle()
-           ...>    |> is_reference()
-           true
-           """
+         args: [ps],
+         args_spec: [T.prepared_statement()],
+         return_spec: T.execution_profile_handle() | nil,
+         example_setup: :ps_setup,
+         doc_example: """
+         iex> eph = ExScylla.Execution.ExecutionProfile.builder()
+         ...>          |> ExScylla.Execution.ExecutionProfileBuilder.build()
+         ...>          |> ExScylla.Execution.ExecutionProfile.into_handle()
+         iex> ps |> Prepared.set_execution_profile_handle(eph)
+         ...>    |> Prepared.get_execution_profile_handle()
+         ...>    |> is_reference()
+         true
+         """
 
- native_f func: :set_execution_profile_handle,
-           args: [ps, profile_handle],
-           args_spec: [T.prepared_statement(), T.execution_profile_handle() | nil],
-           return_spec: T.prepared_statement(),
-           example_setup: :ps_setup,
-           doc_example: """
-           iex> eph = ExecutionProfile.builder()
-           ...>          |> ExecutionProfileBuilder.build()
-           ...>          |> ExecutionProfile.into_handle()
-           iex> ps |> Prepared.set_execution_profile_handle(eph)
-           ...>    |> is_reference()
-           true
-           """
-
+native_f func: :set_execution_profile_handle,
+         args: [ps, profile_handle],
+         args_spec: [T.prepared_statement(), T.execution_profile_handle() | nil],
+         return_spec: T.prepared_statement(),
+         example_setup: :ps_setup,
+         doc_example: """
+         iex> eph = ExScylla.Execution.ExecutionProfile.builder()
+         ...>          |> ExScylla.Execution.ExecutionProfileBuilder.build()
+         ...>          |> ExScylla.Execution.ExecutionProfile.into_handle()
+         iex> ps |> Prepared.set_execution_profile_handle(eph)
+         ...>    |> is_reference()
+         true
+         """
  native_f func: :get_request_timeout,
            args: [ps],
            args_spec: [T.prepared_statement()],
@@ -162,6 +161,7 @@ native_f func: :get_execution_profile_handle,
            return_spec: PreparedMetadata.t(),
            example_setup: :ps_setup,
            doc_example: """
+           iex> alias ExScylla.Types.PreparedMetadata
            iex> %PreparedMetadata{} = Prepared.get_prepared_metadata(ps)
            """
   # TODO
@@ -228,6 +228,27 @@ native_f func: :get_execution_profile_handle,
            example_setup: :ps_setup,
            doc_example: """
            iex> true = Prepared.is_token_aware(ps)
+           """
+
+  native_f func: :get_use_cached_result_metadata,
+           args: [ps],
+           args_spec: [T.prepared_statement()],
+           return_spec: boolean(),
+           example_setup: :ps_setup,
+           doc_example: """
+           iex> ps |> Prepared.get_use_cached_result_metadata()
+           false
+           """
+
+  native_f func: :set_use_cached_result_metadata,
+           args: [ps, use_cached_metadata],
+           args_spec: [T.prepared_statement(), boolean()],
+           return_spec: T.prepared_statement(),
+           example_setup: :ps_setup,
+           doc_example: """
+           iex> ps = Prepared.set_use_cached_result_metadata(ps, false)
+           iex> Prepared.get_use_cached_result_metadata(ps)
+           false
            """
 
   native_f func: :set_consistency,

@@ -3,10 +3,13 @@ defmodule ExScylla.TestSupport do
   alias ExScylla.SessionBuilder
 
   def start_container do
-    {:ok, _} = Testcontainers.start_link()
+    case Testcontainers.start_link() do
+      {:ok, _} -> :ok
+      {:error, {:already_started, _}} -> :ok
+    end
 
     container_config =
-      Testcontainers.Container.new("scylladb/scylla:6.2")
+      Testcontainers.Container.new("scylladb/scylla:2026.1")
       |> Testcontainers.Container.with_exposed_port(9042)
       |> Testcontainers.Container.with_cmd([
         "--disable-version-check",
@@ -17,8 +20,8 @@ defmodule ExScylla.TestSupport do
       |> Testcontainers.Container.with_waiting_strategy(
         Testcontainers.CommandWaitStrategy.new(
           ["cqlsh", "-e", "SHOW VERSION"],
-          60_000,  # timeout in milliseconds
-          250      # check interval in milliseconds
+          120_000,  # timeout in milliseconds
+          100      # check interval in milliseconds
         )
       )
 
@@ -34,6 +37,11 @@ defmodule ExScylla.TestSupport do
                     |> SessionBuilder.build()
 
     {container, node, session}
+  end
+
+  def get_session do
+    [{:session, session}] = :ets.lookup(:ex_scylla_test, :session)
+    session
   end
 
   def setup_simple_keyspace(session, keyspace, replication_factor \\ 1) do

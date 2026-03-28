@@ -170,6 +170,22 @@ fn ps_is_token_aware(ps: ResourceArc<PreparedStatementResource>) -> bool {
 }
 
 #[rustler::nif]
+fn ps_get_use_cached_result_metadata(ps: ResourceArc<PreparedStatementResource>) -> bool {
+    let ps: &PreparedStatement = &ps.0;
+    ps.get_use_cached_result_metadata()
+}
+
+#[rustler::nif]
+fn ps_set_use_cached_result_metadata(
+    ps: ResourceArc<PreparedStatementResource>,
+    use_cached_metadata: bool,
+) -> ResourceArc<PreparedStatementResource> {
+    let mut ps: PreparedStatement = ps.0.to_owned();
+    ps.set_use_cached_result_metadata(use_cached_metadata);
+    ps.ex()
+}
+
+#[rustler::nif]
 fn ps_set_consistency(
     ps: ResourceArc<PreparedStatementResource>,
     consistency: ScyllaConsistency,

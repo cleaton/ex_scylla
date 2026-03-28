@@ -7,6 +7,10 @@ defmodule ExScylla.Types do
   alias ExScylla.Types.UserDefinedType
   alias ExScylla.Types.UserDefinedColumnType
 
+  alias ExScylla.Types.Metrics
+  alias ExScylla.Types.ClusterState
+  alias ExScylla.Types.TracingInfo
+
   @type batch :: reference()
   @type ts_micros :: integer()
   @type duration_ms :: non_neg_integer()
@@ -27,6 +31,9 @@ defmodule ExScylla.Types do
   @type paging_state :: binary()
   @type batch_type :: :logged | :unlogged | :counter
   @type uuid :: binary()
+  @type metrics :: Metrics.t()
+  @type cluster_state :: ClusterState.t()
+  @type tracing_info :: TracingInfo.t()
   @type msg :: String.t()
   @type parse_error :: {:error, {:parse_value, msg()}}
 

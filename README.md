@@ -23,6 +23,10 @@ alias ExScylla.Types.QueryResult
 {:ok, ps} = Session.prepare(session, "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)")
 values = [{:text, "test"}, {:int, 2}, {:double, 1.0}]
 {:ok, %QueryResult{}} = Session.execute(session, ps, values)
+
+# Iterative queries (streams)
+Session.query_stream(session, "SELECT * FROM test.s_doc", [])
+|> Enum.each(fn row -> IO.inspect(row) end)
 ```
 
 ## Installation

@@ -15,7 +15,7 @@ defmodule SessionTest do
                     |> SessionBuilder.known_node(node)
                     |> SessionBuilder.build()
     t = """
-        CREATE TABLE IF NOT EXISTS test.s_doc(
+        CREATE TABLE IF NOT EXISTS test.session_doc(
           a TEXT,
           b INT,
           c DOUBLE,

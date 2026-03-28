@@ -37,17 +37,13 @@ defmodule ExScylla.Native do
       def sb_user(_sbr, _username, _passwd), do: e()
       def sb_write_coalescing(_sbr, _enablde), do: e()
       # Session
-      # //session::s_calculate_token_for_partition_key,
-      # //session::s_connect,
-      # //session::s_get_default_execution_profile_handle,
-      # //session::s_get_keyspace,
-      # //session::s_prepare_batch,
-      # //session::s_execute_iter,
-      # //session::s_get_cluster_data,
-      # //session::s_get_metrics,
-      # //session::s_get_tracing_info_custom,
-      # //session::s_get_tracing_info,
-      # //session::s_query_iter,
+      def s_calculate_token_for_partition_key(_session, _keyspace, _table, _partition_key), do: e()
+      def s_get_cluster_state(_session), do: e()
+      def s_get_default_execution_profile_handle(_session), do: e()
+      def s_get_keyspace(_session), do: e()
+      def s_get_metrics(_session), do: e()
+      def s_get_tracing_info(_opaque, _session, _tracing_id), do: e()
+      def s_prepare_batch(_opaque, _session, _batch), do: e()
       def s_await_schema_agreement(_opaque, _session), do: e()
       def s_await_timed_schema_agreement(_opaque, _session, _timeout_ms), do: e()
       def s_batch(_opaque, _session, _batch, _values), do: e()
@@ -87,9 +83,11 @@ defmodule ExScylla.Native do
       def q_with_page_size(_q, _page_size), do: e()
       # Batch
       def b_get_execution_profile_handle(_batch), do: e()
+      def b_get_request_timeout(_batch), do: e()
       # //batch::b_remove_history_listener,
       def b_set_execution_profile_handle(_batch, _profile_handle), do: e()
       # //batch::b_set_history_listener,
+      def b_set_request_timeout(_batch, _timeout_ms), do: e()
       def b_append_statement(_batch, _statement), do: e()
       def b_get_consistency(_batch), do: e()
       def b_get_is_idempotent(_batch), do: e()
@@ -130,6 +128,8 @@ defmodule ExScylla.Native do
       def ps_get_timestamp(_ps), do: e()
       def ps_get_tracing(_ps), do: e()
       def ps_is_token_aware(_ps), do: e()
+      def ps_get_use_cached_result_metadata(_ps), do: e()
+      def ps_set_use_cached_result_metadata(_ps, _use_cached_metadata), do: e()
       def ps_set_consistency(_ps, _consistency), do: e()
       def ps_set_is_idempotent(_ps, _is_idempotent), do: e()
       def ps_set_page_size(_ps, _page_size), do: e()

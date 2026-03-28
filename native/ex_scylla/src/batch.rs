@@ -43,6 +43,22 @@ fn b_get_is_idempotent(batch: ResourceArc<BatchResource>) -> bool {
     b.get_is_idempotent()
 }
 #[rustler::nif]
+fn b_get_request_timeout(batch: ResourceArc<BatchResource>) -> Option<u64> {
+    let b: &Batch = &batch.0;
+    b.get_request_timeout().map(|d| d.as_millis() as u64)
+}
+
+#[rustler::nif]
+fn b_set_request_timeout(
+    batch: ResourceArc<BatchResource>,
+    timeout_ms: Option<u64>,
+) -> ResourceArc<BatchResource> {
+    let mut b: Batch = batch.0.to_owned();
+    b.set_request_timeout(timeout_ms.map(std::time::Duration::from_millis));
+    ResourceArc::new(BatchResource(b))
+}
+
+#[rustler::nif]
 fn b_get_retry_policy(_batch: ResourceArc<BatchResource>) -> Atom {
     not_implemented_yet()
 }

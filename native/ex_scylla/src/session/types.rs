@@ -7,7 +7,6 @@ use rustler::{
 };
 use scylla::client::session::Session;
 use scylla::response::query_result::QueryResult;
-use scylla::response::PagingStateResponse;
 use scylla::statement::unprepared::Statement as Query;
 use scylla::value::{CqlValue, CqlDuration, Counter};
 use bigdecimal::BigDecimal;
@@ -15,6 +14,135 @@ use num_bigint::BigInt;
 use std::str::FromStr;
 use scylla_cql::frame::response::result::{ColumnType, ColumnSpec, NativeType, CollectionType};
 use crate::errors::ScyllaError;
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.Metrics"]
+pub struct ScyllaMetrics {
+    pub errors_num: u64,
+    pub queries_num: u64,
+    pub errors_iter_num: u64,
+    pub queries_iter_num: u64,
+    pub retries_num: u64,
+    pub mean_rate: f64,
+    pub one_minute_rate: f64,
+    pub five_minute_rate: f64,
+    pub fifteen_minute_rate: f64,
+    pub total_connections: u64,
+    pub connection_timeouts: u64,
+    pub request_timeouts: u64,
+    pub latency_avg_ms: Option<u64>,
+    pub latency_99_percentile_ms: Option<u64>,
+}
+
+impl From<&scylla::observability::metrics::Metrics> for ScyllaMetrics {
+    fn from(m: &scylla::observability::metrics::Metrics) -> Self {
+        ScyllaMetrics {
+            errors_num: m.get_errors_num(),
+            queries_num: m.get_queries_num(),
+            errors_iter_num: m.get_errors_iter_num(),
+            queries_iter_num: m.get_queries_iter_num(),
+            retries_num: m.get_retries_num(),
+            mean_rate: m.get_mean_rate(),
+            one_minute_rate: m.get_one_minute_rate(),
+            five_minute_rate: m.get_five_minute_rate(),
+            fifteen_minute_rate: m.get_fifteen_minute_rate(),
+            total_connections: m.get_total_connections(),
+            connection_timeouts: m.get_connection_timeouts(),
+            request_timeouts: m.get_request_timeouts(),
+            latency_avg_ms: m.get_latency_avg_ms().ok(),
+            latency_99_percentile_ms: m.get_latency_percentile_ms(99.0).ok(),
+        }
+    }
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.TracingEvent"]
+pub struct ScyllaTracingEvent {
+    pub event_id: ScyllaBinary,
+    pub activity: Option<String>,
+    pub source: Option<ScyllaIpAddr>,
+    pub source_elapsed: Option<i32>,
+    pub thread: Option<String>,
+}
+
+impl From<scylla::observability::tracing::TracingEvent> for ScyllaTracingEvent {
+    fn from(te: scylla::observability::tracing::TracingEvent) -> Self {
+        ScyllaTracingEvent {
+            event_id: ScyllaBinary(te.event_id.as_bytes().to_vec()),
+            activity: te.activity,
+            source: te.source.map(|s| s.into()),
+            source_elapsed: te.source_elapsed,
+            thread: te.thread,
+        }
+    }
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.TracingInfo"]
+pub struct ScyllaTracingInfo {
+    pub client: Option<ScyllaIpAddr>,
+    pub command: Option<String>,
+    pub coordinator: Option<ScyllaIpAddr>,
+    pub duration: Option<i32>,
+    pub parameters: Option<std::collections::HashMap<String, String>>,
+    pub request: Option<String>,
+    pub started_at: Option<i64>,
+    pub events: Vec<ScyllaTracingEvent>,
+}
+
+impl From<scylla::observability::tracing::TracingInfo> for ScyllaTracingInfo {
+    fn from(ti: scylla::observability::tracing::TracingInfo) -> Self {
+        ScyllaTracingInfo {
+            client: ti.client.map(|c| c.into()),
+            command: ti.command,
+            coordinator: ti.coordinator.map(|c| c.into()),
+            duration: ti.duration,
+            parameters: ti.parameters,
+            request: ti.request,
+            started_at: ti.started_at.map(|s| s.0),
+            events: ti.events.into_iter().map(|e| e.into()).collect(),
+        }
+    }
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.NodeInfo"]
+pub struct ScyllaNodeInfo {
+    pub host_id: ScyllaBinary,
+    pub address: ScyllaSocketAddr,
+    pub datacenter: Option<String>,
+    pub rack: Option<String>,
+}
+
+impl From<&scylla::cluster::Node> for ScyllaNodeInfo {
+    fn from(node: &scylla::cluster::Node) -> Self {
+        ScyllaNodeInfo {
+            host_id: ScyllaBinary(node.host_id.as_bytes().to_vec()),
+            address: ScyllaSocketAddr {
+                addr: node.address.ip().into(),
+                port: node.address.port(),
+            },
+            datacenter: node.datacenter.clone(),
+            rack: node.rack.clone(),
+        }
+    }
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.ClusterState"]
+pub struct ScyllaClusterState {
+    pub nodes: Vec<ScyllaNodeInfo>,
+    pub keyspaces: Vec<String>,
+}
+
+impl From<&scylla::cluster::ClusterState> for ScyllaClusterState {
+    fn from(cs: &scylla::cluster::ClusterState) -> Self {
+        ScyllaClusterState {
+            nodes: cs.get_nodes_info().iter().map(|n| (&**n).into()).collect(),
+            keyspaces: cs.keyspaces_iter().map(|(k, _)| k.to_string()).collect(),
+        }
+    }
+}
 
 pub struct SessionResource(pub Session);
 

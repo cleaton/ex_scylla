@@ -20,9 +20,9 @@ defmodule ExScylla.Statement.Batch do
            args_spec: [T.batch()],
            return_spec: T.execution_profile_handle() | nil,
            doc_example: """
-           iex> eph = ExecutionProfile.builder()
-           ...>          |> ExecutionProfileBuilder.build()
-           ...>          |> ExecutionProfile.into_handle()
+           iex> eph = ExScylla.Execution.ExecutionProfile.builder()
+           ...>          |> ExScylla.Execution.ExecutionProfileBuilder.build()
+           ...>          |> ExScylla.Execution.ExecutionProfile.into_handle()
            iex> b = Batch.new(:unlogged)
            ...>   |> Batch.set_execution_profile_handle(eph)
            iex> b |> Batch.get_execution_profile_handle()
@@ -35,9 +35,9 @@ defmodule ExScylla.Statement.Batch do
            args_spec: [T.batch(), T.execution_profile_handle() | nil],
            return_spec: T.batch(),
            doc_example: """
-           iex> eph = ExecutionProfile.builder()
-           ...>          |> ExecutionProfileBuilder.build()
-           ...>          |> ExecutionProfile.into_handle()
+           iex> eph = ExScylla.Execution.ExecutionProfile.builder()
+           ...>          |> ExScylla.Execution.ExecutionProfileBuilder.build()
+           ...>          |> ExScylla.Execution.ExecutionProfile.into_handle()
            iex> b = Batch.new(:unlogged)
            ...>   |> Batch.set_execution_profile_handle(eph)
            iex> b |> Batch.get_execution_profile_handle()
@@ -73,6 +73,27 @@ defmodule ExScylla.Statement.Batch do
   #          args: [q],
   #          args_spec: [T.query()],
   #         return_spec: pos_integer() | nil
+
+  native_f func: :get_request_timeout,
+           args: [batch],
+           args_spec: [T.batch()],
+           return_spec: pos_integer() | nil,
+           doc_example: """
+           iex> batch = Batch.new(:unlogged)
+           iex> nil = Batch.get_request_timeout(batch)
+           iex> batch = Batch.set_request_timeout(batch, 5000)
+           iex> 5000 = Batch.get_request_timeout(batch)
+           """
+
+  native_f func: :set_request_timeout,
+           args: [batch, timeout_ms],
+           args_spec: [T.batch(), pos_integer() | nil],
+           return_spec: T.batch(),
+           doc_example: """
+           iex> batch = Batch.new(:unlogged)
+           iex> batch = Batch.set_request_timeout(batch, 5000)
+           iex> true = is_reference(batch)
+           """
 
   native_f func: :get_serial_consistency,
            args: [batch],
