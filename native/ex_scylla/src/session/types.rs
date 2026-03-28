@@ -10,6 +10,9 @@ use scylla::response::query_result::QueryResult;
 use scylla::response::PagingStateResponse;
 use scylla::statement::unprepared::Statement as Query;
 use scylla::value::{CqlValue, CqlDuration, Counter};
+use bigdecimal::BigDecimal;
+use num_bigint::BigInt;
+use std::str::FromStr;
 use scylla_cql::frame::response::result::{ColumnType, ColumnSpec, NativeType, CollectionType};
 use crate::errors::ScyllaError;
 
@@ -129,7 +132,11 @@ impl From<CqlValue> for ScyllaValue {
             CqlValue::Boolean(bool) => ScyllaValue::Boolean(bool),
             CqlValue::Blob(blob) => ScyllaValue::Blob(ScyllaBinary(blob)),
             CqlValue::Counter(counter) => ScyllaValue::Counter(counter.0),
-            CqlValue::Decimal(decimal) => ScyllaValue::Decimal(format!("{:?}", decimal)),
+            CqlValue::Decimal(decimal) => {
+                let (bi, scale) = decimal.into_signed_be_bytes_and_exponent();
+                let bd = BigDecimal::from((BigInt::from_signed_bytes_be(&bi), scale as i64));
+                ScyllaValue::Decimal(bd.to_string())
+            }
             CqlValue::Date(date) => ScyllaValue::Date(date.0),
             CqlValue::Double(f64) => ScyllaValue::Double(f64),
             CqlValue::Duration(duration) => ScyllaValue::Duration(ScyllaCqlDuration {
@@ -170,7 +177,10 @@ impl From<CqlValue> for ScyllaValue {
                 ScyllaValue::Tuple(t.into_iter().map(|v| v.map(|v| v.into())).collect())
             }
             CqlValue::Uuid(uuid) => ScyllaValue::Uuid(ScyllaBinary(uuid.as_bytes().to_vec())),
-            CqlValue::Varint(varint) => ScyllaValue::Varint(format!("{:?}", varint)),
+            CqlValue::Varint(varint) => {
+                let bi = BigInt::from_signed_bytes_be(&varint.into_signed_bytes_be());
+                ScyllaValue::Varint(bi.to_string())
+            }
             _ => ScyllaValue::Empty,
         }
     }
@@ -183,10 +193,90 @@ impl Into<CqlValue> for ScyllaValue {
             ScyllaValue::Boolean(b) => CqlValue::Boolean(b),
             ScyllaValue::Blob(b) => CqlValue::Blob(b.0),
             ScyllaValue::Counter(c) => CqlValue::Counter(Counter(c)),
-            ScyllaValue::Int(i) => CqlValue::Int(i),
-            ScyllaValue::BigInt(i) => CqlValue::BigInt(i),
-            ScyllaValue::Text(s) => CqlValue::Text(s),
-            _ => CqlValue::Empty,
+            ScyllaValue::Decimal(decimal) => {
+                BigDecimal::from_str(&decimal)
+                    .map(|bd| {
+                        let (bi, scale) = bd.into_bigint_and_exponent();
+                        CqlValue::Decimal(scylla::value::CqlDecimal::from_signed_be_bytes_and_exponent(bi.to_signed_bytes_be(), scale as i32))
+                    })
+                    .unwrap_or(CqlValue::Empty)
+            }
+            ScyllaValue::Date(u32) => CqlValue::Date(scylla::value::CqlDate(u32)),
+            ScyllaValue::Double(f64) => CqlValue::Double(f64),
+            ScyllaValue::Duration(cd) => CqlValue::Duration(CqlDuration {
+                months: cd.months,
+                days: cd.days,
+                nanoseconds: cd.nanoseconds,
+            }),
+            ScyllaValue::Empty => CqlValue::Empty,
+            ScyllaValue::Float(f32) => CqlValue::Float(f32),
+            ScyllaValue::Int(i32) => CqlValue::Int(i32),
+            ScyllaValue::BigInt(i64) => CqlValue::BigInt(i64),
+            ScyllaValue::Text(text) => CqlValue::Text(text),
+            ScyllaValue::Timestamp(i64) => CqlValue::Timestamp(scylla::value::CqlTimestamp(i64)),
+            ScyllaValue::Inet(ipaddr) => {
+                let ip: std::net::IpAddr = match ipaddr {
+                    ScyllaIpAddr::IPv4(v4) => std::net::IpAddr::V4(std::net::Ipv4Addr::new(v4.0, v4.1, v4.2, v4.3)),
+                    ScyllaIpAddr::IPv6(v6) => std::net::IpAddr::V6(std::net::Ipv6Addr::new(
+                        v6.0, v6.1, v6.2, v6.3, v6.4, v6.5, v6.6, v6.7,
+                    )),
+                };
+                CqlValue::Inet(ip)
+            }
+            ScyllaValue::List(v) => {
+                let values = v.into_iter().map(|sv| sv.into()).collect();
+                CqlValue::List(values)
+            }
+            ScyllaValue::Map(v) => {
+                let values = v.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
+                CqlValue::Map(values)
+            }
+            ScyllaValue::Set(v) => {
+                let values = v.into_iter().map(|sv| sv.into()).collect();
+                CqlValue::Set(values)
+            }
+            ScyllaValue::UserDefinedType(sudt) => {
+                let fields = sudt
+                    .fields
+                    .into_iter()
+                    .map(|(t, v)| (t, v.map(|v| v.into())))
+                    .collect();
+                CqlValue::UserDefinedType {
+                    keyspace: sudt.keyspace,
+                    name: sudt.type_name,
+                    fields,
+                }
+            }
+            ScyllaValue::SmallInt(i16) => CqlValue::SmallInt(i16),
+            ScyllaValue::TinyInt(i8) => CqlValue::TinyInt(i8),
+            ScyllaValue::Time(u64) => CqlValue::Time(scylla::value::CqlTime(u64 as i64)),
+            ScyllaValue::Timeuuid(u) => {
+                if u.0.len() == 16 {
+                    let mut slice: [u8; 16] = Default::default();
+                    slice.copy_from_slice(u.0.as_slice());
+                    CqlValue::Timeuuid(uuid::Uuid::from_bytes(slice).into())
+                } else {
+                    CqlValue::Empty
+                }
+            }
+            ScyllaValue::Tuple(v) => {
+                let values = v.into_iter().map(|sv| sv.map(|sv| sv.into())).collect();
+                CqlValue::Tuple(values)
+            }
+            ScyllaValue::Uuid(u) => {
+                if u.0.len() == 16 {
+                    let mut slice: [u8; 16] = Default::default();
+                    slice.copy_from_slice(u.0.as_slice());
+                    CqlValue::Uuid(uuid::Uuid::from_bytes(slice))
+                } else {
+                    CqlValue::Empty
+                }
+            }
+            ScyllaValue::Varint(varint) => {
+                BigInt::from_str(&varint)
+                    .map(|bi| CqlValue::Varint(scylla::value::CqlVarint::from_signed_bytes_be(bi.to_signed_bytes_be())))
+                    .unwrap_or(CqlValue::Empty)
+            }
         }
     }
 }
@@ -414,7 +504,7 @@ impl From<ColumnType<'_>> for ScyllaColumnType {
                 CollectionType::Map(k, v) => ScyllaColumnType::Map((Box::new(ScyllaColumnType::from(*k)), Box::new(ScyllaColumnType::from(*v)))),
                 _ => ScyllaColumnType::Custom(format!("{:?}", typ)),
             },
-            ColumnType::UserDefinedType { definition, .. } => ScyllaUserDefinedType_from_def(&definition),
+            ColumnType::UserDefinedType { definition, .. } => scylla_udt_from_def(&definition),
             ColumnType::Tuple(vec) => {
                 ScyllaColumnType::Tuple(vec.into_iter().map(|ct| ct.into()).collect())
             }
@@ -423,7 +513,7 @@ impl From<ColumnType<'_>> for ScyllaColumnType {
     }
 }
 
-fn ScyllaUserDefinedType_from_def(definition: &scylla_cql::frame::response::result::UserDefinedType) -> ScyllaColumnType {
+fn scylla_udt_from_def(definition: &scylla_cql::frame::response::result::UserDefinedType) -> ScyllaColumnType {
     ScyllaColumnType::UserDefinedType(ScyllaUserDefinedColumnType {
         type_name: definition.name.to_string(),
         keyspace: definition.keyspace.to_string(),

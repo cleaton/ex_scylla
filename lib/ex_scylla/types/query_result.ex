@@ -1,5 +1,5 @@
 defmodule ExScylla.Types.QueryResult do
-  alias ExScylla.Types.ScyllaRow
+  alias ExScylla.Types.Row
   # alias ExScylla.Types.ScyllaColumnSpec
   use ExScylla.Macros.Native, [
     docs_rs_path: "/scylla/transport/query_result/struct.QueryResult.html"
@@ -7,7 +7,7 @@ defmodule ExScylla.Types.QueryResult do
 
 
 
-  native_struct rows: list(ScyllaRow.t()) | nil,
+  native_struct rows: list(Row.t()) | nil,
          paging_state: binary() | nil,
          tracing_id: binary() | nil,
          warnings: list(String.t()),

@@ -96,7 +96,7 @@ defmodule ExScylla.LoadBalancing.DefaultPolicyBuilder do
     return_spec: T.default_policy_builder(),
     doc_example: """
     iex> dpb = DefaultPolicyBuilder.new()
-    ...>        |> DefaultPolicyBuilder.is_token_aware(true)
+    ...>        |> DefaultPolicyBuilder.token_aware(true)
     iex> true = is_reference(dpb)
     """
   )

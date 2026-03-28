@@ -258,9 +258,11 @@ fn sb_tracing_info_fetch_attempts(
     sbr: ResourceArc<SessionBuilderResource>,
     attempts: u32,
 ) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| {
-        sb.tracing_info_fetch_attempts(NonZeroU32::new(attempts).expect("attemts can not be 0"))
-    });
+    if let Some(attempts) = NonZeroU32::new(attempts) {
+        use_builder!(sbr, |sb: SessionBuilder| {
+            sb.tracing_info_fetch_attempts(attempts)
+        });
+    }
     sbr
 }
 

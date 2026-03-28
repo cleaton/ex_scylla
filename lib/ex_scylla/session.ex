@@ -32,7 +32,7 @@ defmodule ExScylla.Session do
   native_f_async func: :await_timed_schema_agreement,
                  args: [session, timeout_ms],
                  args_spec: [T.session(), pos_integer()],
-                 return_spec: :ok | {:error, QueryError.t()},
+                 return_spec: {:ok, boolean()} | {:error, QueryError.t()},
                  example_setup: :session_setup,
                  doc_example: """
                  iex> Session.await_timed_schema_agreement(session, 15_000)
@@ -135,6 +135,16 @@ defmodule ExScylla.Session do
                  iex> query = "INSERT INTO test.s_doc (a, b, c) VALUES (?, ?, ?)"
                  iex> values = [{:text, "test"}, {:int, 3}, {:double, 1.0}]
                  iex> {:ok, %QueryResult{}} = Session.query(session, query, values)
+                 iex> # Test Decimal and Varint
+                 iex> t = "CREATE TABLE IF NOT EXISTS test.types_test (id INT PRIMARY KEY, d DECIMAL, v VARINT);"
+                 iex> {:ok, _} = Session.query(session, t, [])
+                 iex> query = "INSERT INTO test.types_test (id, d, v) VALUES (?, ?, ?)"
+                 iex> values = [{:int, 1}, {:decimal, "1.23"}, {:varint, "12345678901234567890"}]
+                 iex> {:ok, _} = Session.query(session, query, values)
+                 iex> {:ok, %QueryResult{rows: [%ExScylla.Types.Row{columns: [id, d, v]}]}} = Session.query(session, "SELECT * FROM test.types_test WHERE id = 1", [])
+                 iex> {:int, 1} = id
+                 iex> {:decimal, "1.23"} = d
+                 iex> {:varint, "12345678901234567890"} = v
                  """
 
       # # //session::s_query_iter,
