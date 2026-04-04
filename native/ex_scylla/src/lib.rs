@@ -8,9 +8,8 @@ mod session;
 mod session_builder;
 mod execution;
 pub mod types;
-pub mod utils;
-use std::option::Option::Some;
-use execution::execution_profile;
+    pub mod utils;
+    use execution::execution_profile;
 use execution::execution_profile_builder;
 use execution::execution_profile_handle;
 use execution::load_balancing;
@@ -111,7 +110,6 @@ rustler::init!(
         query::q_set_execution_profile_handle,
         //query::q_set_history_listener,
         query::q_set_request_timeout,
-        query::q_disable_paging,
         query::q_get_consistency,
         query::q_get_is_idempotent,
         query::q_get_page_size,
@@ -160,7 +158,6 @@ rustler::init!(
         //prepared_statement::ps_set_history_listener,
         prepared_statement::ps_set_request_timeout,
         prepared_statement::ps_compute_partition_key,
-        prepared_statement::ps_disable_paging,
         prepared_statement::ps_get_consistency,
         prepared_statement::ps_get_id,
         prepared_statement::ps_get_is_idempotent,
@@ -222,6 +219,7 @@ rustler::init!(
     load = load
 );
 
+#[allow(non_local_definitions)]
 fn load(env: rustler::Env, _: rustler::Term) -> bool {
     runtime::init();
     rustler::resource!(session_builder::types::SessionBuilderResource, env);

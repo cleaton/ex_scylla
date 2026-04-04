@@ -266,9 +266,11 @@ pub enum ScyllaValue {
     Varint(String),
 }
 
-impl From<CqlValue> for ScyllaValue {
-    fn from(cv: CqlValue) -> Self {
-        match cv {
+impl std::convert::TryFrom<CqlValue> for ScyllaValue {
+    type Error = rustler::Error;
+
+    fn try_from(cv: CqlValue) -> Result<Self, Self::Error> {
+        Ok(match cv {
             CqlValue::Ascii(ascii) => ScyllaValue::Ascii(ascii),
             CqlValue::Boolean(bool) => ScyllaValue::Boolean(bool),
             CqlValue::Blob(blob) => ScyllaValue::Blob(ScyllaBinary(blob)),
@@ -292,11 +294,11 @@ impl From<CqlValue> for ScyllaValue {
             CqlValue::Text(text) => ScyllaValue::Text(text),
             CqlValue::Timestamp(d) => ScyllaValue::Timestamp(d.0),
             CqlValue::Inet(ipaddr) => ScyllaValue::Inet(ipaddr.into()),
-            CqlValue::List(v) => ScyllaValue::List(v.into_iter().map(|cv| cv.into()).collect()),
+            CqlValue::List(v) => ScyllaValue::List(v.into_iter().map(|cv| cv.try_into()).collect::<Result<Vec<_>, rustler::Error>>()?),
             CqlValue::Map(v) => {
-                ScyllaValue::Map(v.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
+                ScyllaValue::Map(v.into_iter().map(|(k, v)| Ok::<_, rustler::Error>((k.try_into()?, v.try_into()?))).collect::<Result<Vec<_>, rustler::Error>>()?)
             }
-            CqlValue::Set(v) => ScyllaValue::Set(v.into_iter().map(|cv| cv.into()).collect()),
+            CqlValue::Set(v) => ScyllaValue::Set(v.into_iter().map(|cv| cv.try_into()).collect::<Result<Vec<_>, rustler::Error>>()?),
             CqlValue::UserDefinedType {
                 keyspace,
                 name,
@@ -307,23 +309,29 @@ impl From<CqlValue> for ScyllaValue {
                 type_name: name,
                 fields: fields
                     .into_iter()
-                    .map(|(f, v)| (f, v.map(|v| v.into())))
-                    .collect(),
+                    .map(|(f, v)| Ok::<_, rustler::Error>((f, match v {
+                        Some(v) => Some(v.try_into()?),
+                        None => None,
+                    })))
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
             }),
             CqlValue::SmallInt(i16) => ScyllaValue::SmallInt(i16),
             CqlValue::TinyInt(i8) => ScyllaValue::TinyInt(i8),
             CqlValue::Time(d) => ScyllaValue::Time(d.0 as u64),
             CqlValue::Timeuuid(uuid) => ScyllaValue::Timeuuid(ScyllaBinary(uuid.as_bytes().to_vec())),
             CqlValue::Tuple(t) => {
-                ScyllaValue::Tuple(t.into_iter().map(|v| v.map(|v| v.into())).collect())
+                ScyllaValue::Tuple(t.into_iter().map(|v| match v {
+                    Some(val) => Ok::<_, rustler::Error>(Some(val.try_into()?)),
+                    None => Ok(None),
+                }).collect::<Result<Vec<_>, rustler::Error>>()?)
             }
             CqlValue::Uuid(uuid) => ScyllaValue::Uuid(ScyllaBinary(uuid.as_bytes().to_vec())),
             CqlValue::Varint(varint) => {
                 let bi = BigInt::from_signed_bytes_be(&varint.into_signed_bytes_be());
                 ScyllaValue::Varint(bi.to_string())
             }
-            _ => ScyllaValue::Empty,
-        }
+            _ => return Err(rustler::Error::Term(Box::new("unsupported_cql_value"))),
+        })
     }
 }
 

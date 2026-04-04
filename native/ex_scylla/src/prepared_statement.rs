@@ -74,13 +74,6 @@ fn ps_is_confirmed_lwt(ps: ResourceArc<PreparedStatementResource>) -> bool {
 }
 
 #[rustler::nif]
-fn ps_disable_paging(
-    ps: ResourceArc<PreparedStatementResource>,
-) -> ResourceArc<PreparedStatementResource> {
-    ps
-}
-
-#[rustler::nif]
 fn ps_get_consistency(ps: ResourceArc<PreparedStatementResource>) -> Option<ScyllaConsistency> {
     let ps: &PreparedStatement = &ps.0;
     ps.get_consistency().map(|c| c.into())

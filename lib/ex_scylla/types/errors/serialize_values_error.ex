@@ -1,4 +1,8 @@
 defmodule ExScylla.Types.Errors.SerializeValuesError do
+  @moduledoc """
+  Represents an error that can occur when serializing values.
+  Maps to `scylla::frame::value::SerializeValuesError`.
+  """
   alias ExScylla.Macros.Native
   @type msg :: String.t()
   @typedoc """

@@ -1,4 +1,8 @@
 defmodule ExScylla.Types.Errors.QueryError do
+  @moduledoc """
+  Represents an error that can occur during query execution.
+  Maps to `scylla::transport::errors::QueryError`.
+  """
   alias ExScylla.Types.Errors.DbError
   alias ExScylla.Types.Errors.BadQuery
   alias ExScylla.Types.Errors.TranslationError

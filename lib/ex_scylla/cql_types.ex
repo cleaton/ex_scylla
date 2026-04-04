@@ -3,6 +3,7 @@ defmodule ExScylla.CQLTypes do
   Pure Elixir codec for ScyllaDB types.
   """
 
+  @spec decode_value(binary(), atom() | tuple()) :: term()
   def decode_value(bin, type)
 
   def decode_value(bin, :int) do
@@ -108,12 +109,6 @@ defmodule ExScylla.CQLTypes do
     end
   end
 
-  defp decode_varint(bin) do
-    bits = byte_size(bin) * 8
-    <<val::signed-size(bits)>> = bin
-    val
-  end
-
   def decode_value(bin, {:list, inner_type}) do
     <<count::signed-size(32), rest::binary>> = bin
     decode_collection(rest, count, inner_type, [])
@@ -138,6 +133,12 @@ defmodule ExScylla.CQLTypes do
   end
 
   def decode_value(bin, _unknown_type), do: bin
+
+  defp decode_varint(bin) do
+    bits = byte_size(bin) * 8
+    <<val::signed-size(bits)>> = bin
+    val
+  end
 
   defp decode_collection(_bin, 0, _type, acc), do: Enum.reverse(acc)
   defp decode_collection(<<len::signed-size(32), rest::binary>>, count, type, acc) do

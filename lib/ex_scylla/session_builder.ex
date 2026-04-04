@@ -3,7 +3,7 @@ defmodule ExScylla.SessionBuilder do
   alias ExScylla.Types.Errors.NewSessionError
   use ExScylla.Macros.Native, [
                           prefix: :sb,
-                          docs_rs_path: "/scylla/transport/session_builder/struct.SessionBuilder.html"
+                          docs_rs_path: "/scylla/client/session_builder/struct.SessionBuilder.html"
                         ]
 
   native_f func: :default_execution_profile_handle,

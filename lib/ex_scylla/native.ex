@@ -64,7 +64,6 @@ defmodule ExScylla.Native do
       def q_set_execution_profile_handle(_q, _profile_handle), do: e()
       # //query::q_set_history_listener,
       def q_set_request_timeout(_q, _timeout_ms), do: e()
-      def q_disable_paging(_q), do: e()
       def q_get_consistency(_q), do: e()
       def q_get_is_idempotent(_q), do: e()
       def q_get_page_size(_q), do: e()
@@ -113,7 +112,6 @@ defmodule ExScylla.Native do
       # //prepared_statement::ps_set_history_listener,
       def ps_set_request_timeout(_ps, _timeout_ms), do: e()
       def ps_compute_partition_key(_ps, _bound_values), do: e()
-      def ps_disable_paging(_ps), do: e()
       def ps_get_consistency(_ps), do: e()
       def ps_get_id(_ps), do: e()
       def ps_get_is_idempotent(_ps), do: e()

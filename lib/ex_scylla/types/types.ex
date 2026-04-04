@@ -1,4 +1,8 @@
 defmodule ExScylla.Types do
+  @moduledoc """
+  This module defines the core type hierarchy and aliases used throughout the `ExScylla` library.
+  It provides Elixir type specs that map to the underlying Rust Scylla driver types.
+  """
   alias ExScylla.Types.RoundRobinPolicy
   alias ExScylla.Types.DcAwareRoundRobinPolicy
   alias ExScylla.Types.SimpleSpeculativeExecutionPolicy
@@ -11,17 +15,20 @@ defmodule ExScylla.Types do
   alias ExScylla.Types.ClusterState
   alias ExScylla.Types.TracingInfo
 
-  @type batch :: reference()
+  @opaque batch :: reference()
   @type ts_micros :: integer()
   @type duration_ms :: non_neg_integer()
-  @type query :: reference()
-  @type session :: reference()
-  @type execution_profile_handle :: reference()
-  @type execution_profile :: reference()
-  @type execution_profile_builder :: reference()
-  @type prepared_statement :: reference()
+  @opaque query :: reference()
+  @opaque session :: reference()
+  @opaque execution_profile_handle :: reference()
+  @opaque execution_profile :: reference()
+  @opaque execution_profile_builder :: reference()
+  @opaque prepared_statement :: reference()
   @type consistency :: :any | :one | :two | :three | :quorum | :all | :local_quorum | :each_quorum | :local_one
-  @type session_builder :: reference()
+  @opaque session_builder :: reference()
+  @opaque default_policy_builder :: reference()
+  @opaque latency_awareness_builder :: reference()
+  @opaque load_balancing_policy_resource :: reference()
   @type transport_compression :: :lz4 | :snappy
   @type load_balancing_policy :: RoundRobinPolicy.t() | DcAwareRoundRobinPolicy.t()
   @type pool_size :: {:per_host, pos_integer()} | {:per_shard, pos_integer()}

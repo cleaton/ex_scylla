@@ -1,4 +1,8 @@
 defmodule ExScylla.Types.Errors.BadKeyspaceName do
+  @moduledoc """
+  Represents an error related to an invalid keyspace name.
+  Maps to `scylla::transport::errors::BadKeyspaceName`.
+  """
   alias ExScylla.Macros.Native
   @type msg :: String.t()
   @typedoc """

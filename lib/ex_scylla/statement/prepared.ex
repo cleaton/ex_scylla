@@ -86,20 +86,10 @@ native_f func: :set_execution_profile_handle,
            false
            """
 
-  native_f func: :disable_paging,
-           args: [ps],
-           args_spec: [T.prepared_statement()],
-           return_spec: T.prepared_statement(),
-           example_setup: :ps_setup,
-           doc_example: """
-           iex> ps = Prepared.disable_paging(ps)
-           iex> true = is_reference(ps)
-           """
-
   native_f func: :get_consistency,
            args: [ps],
            args_spec: [T.prepared_statement()],
-           return_spec: T.consitency() | nil,
+           return_spec: T.consistency() | nil,
            example_setup: :ps_setup,
            doc_example: """
            iex> nil = Prepared.get_consistency(ps)

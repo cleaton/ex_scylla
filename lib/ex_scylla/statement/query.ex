@@ -2,7 +2,7 @@ defmodule ExScylla.Statement.Query do
   alias ExScylla.Types, as: T
   use ExScylla.Macros.Native, [
                           prefix: :q,
-                          docs_rs_path: "/scylla/statement/query/struct.Query.html"
+                          docs_rs_path: "/scylla/statement/unprepared/struct.Statement.html"
                         ]
 
   native_f func: :get_execution_profile_handle,
@@ -56,21 +56,10 @@ defmodule ExScylla.Statement.Query do
             15000
             """
 
-  native_f func: :disable_paging,
-           args: [q],
-           args_spec: [T.query()],
-           return_spec: T.query(),
-           doc_example: """
-           iex> Query.new("SELECT * FROM test;")
-           ...>   |> Query.disable_paging()
-           ...>   |> is_reference()
-           true
-           """
-
   native_f func: :get_consistency,
            args: [q],
            args_spec: [T.query()],
-           return_spec: T.consitency() | nil,
+           return_spec: T.consistency() | nil,
            doc_example: """
            iex> q = Query.new("SELECT * FROM test;")
            iex> Query.get_consistency(q)

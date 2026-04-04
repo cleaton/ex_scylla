@@ -15,6 +15,15 @@ use scylla::value::CqlValue;
 use types::*;
 use scylla::response::PagingStateResponse;
 
+fn decode_values<'a>(values: Vec<Term<'a>>) -> NifResult<Vec<CqlValue>> {
+    let mut cql_values: Vec<CqlValue> = Vec::new();
+    for term in values {
+        let sv: ScyllaValue = term.decode()?;
+        cql_values.push(sv.into());
+    }
+    Ok(cql_values)
+}
+
 #[rustler::nif]
 fn s_await_schema_agreement<'a>(
     env: Env<'a>,
@@ -64,12 +73,7 @@ fn s_batch<'a>(
 ) -> NifResult<Atom> {
     let mut row_values: Vec<Vec<CqlValue>> = Vec::new();
     for row_terms in values {
-        let mut cql_row: Vec<CqlValue> = Vec::new();
-        for term in row_terms {
-            let sv: ScyllaValue = term.decode()?;
-            cql_row.push(sv.into());
-        }
-        row_values.push(cql_row);
+        row_values.push(decode_values(row_terms)?);
     }
     
     async_elixir!(env, opaque, {
@@ -79,7 +83,7 @@ fn s_batch<'a>(
     }, |env, res| {
         match res {
             Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
-            Err(e) => ScyllaResult::Err(e.to_string()),
+            Err(e) => ScyllaResult::Err(e.ex()),
         }
     });
     Ok(atom::ok())
@@ -91,11 +95,7 @@ fn s_calculate_token<'a>(
     prepared: ResourceArc<PreparedStatementResource>, 
     values: Vec<Term<'a>>
 ) -> NifResult<Option<ScyllaToken>> {
-    let mut cql_values: Vec<CqlValue> = Vec::new();
-    for term in values {
-        let sv: ScyllaValue = term.decode()?;
-        cql_values.push(sv.into());
-    }
+    let cql_values = decode_values(values)?;
     
     match prepared.0.calculate_token(&cql_values) {
         Ok(token) => Ok(token.map(|t| t.into())),
@@ -110,11 +110,7 @@ pub fn s_calculate_token_for_partition_key<'a>(
     table: String,
     partition_key: Vec<Term<'a>>,
 ) -> NifResult<Option<ScyllaToken>> {
-    let mut cql_values: Vec<CqlValue> = Vec::new();
-    for term in partition_key {
-        let sv: ScyllaValue = term.decode()?;
-        cql_values.push(sv.into());
-    }
+    let cql_values = decode_values(partition_key)?;
 
     let session: &Session = &session.0;
     let cluster_state = session.get_cluster_state();
@@ -150,11 +146,7 @@ fn s_execute<'a>(
     prepared: ResourceArc<PreparedStatementResource>,
     values: Vec<Term<'a>>,
 ) -> NifResult<Atom> {
-    let mut cql_values: Vec<CqlValue> = Vec::new();
-    for term in values {
-        let sv: ScyllaValue = term.decode()?;
-        cql_values.push(sv.into());
-    }
+    let cql_values = decode_values(values)?;
 
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
@@ -162,7 +154,7 @@ fn s_execute<'a>(
     }, |env, res| {
         match res {
             Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
-            Err(e) => ScyllaResult::Err(e.to_string()),
+            Err(e) => ScyllaResult::Err(e.ex()),
         }
     });
     Ok(atom::ok())
@@ -177,11 +169,7 @@ fn s_execute_paged<'a>(
     values: Vec<Term<'a>>,
     paging_state: Option<ScyllaPageState>,
 ) -> NifResult<Atom> {
-    let mut cql_values: Vec<CqlValue> = Vec::new();
-    for term in values {
-        let sv: ScyllaValue = term.decode()?;
-        cql_values.push(sv.into());
-    }
+    let cql_values = decode_values(values)?;
     let paging_state = paging_state.map(|s| s.0).unwrap_or(scylla::response::PagingState::start());
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
@@ -197,7 +185,7 @@ fn s_execute_paged<'a>(
                 }
                 ScyllaResult::Ok(scylla_qr)
             },
-            Err(e) => ScyllaResult::Err(e.to_string()),
+            Err(e) => ScyllaResult::Err(e.ex()),
         }
     });
     Ok(atom::ok())
@@ -312,18 +300,14 @@ fn s_query<'a>(
     query: ScyllaQuery,
     values: Vec<Term<'a>>,
 ) -> NifResult<Atom> {
-    let mut cql_values: Vec<CqlValue> = Vec::new();
-    for term in values {
-        let sv: ScyllaValue = term.decode()?;
-        cql_values.push(sv.into());
-    }
+    let cql_values = decode_values(values)?;
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         session.query_unpaged(query, cql_values).await
     }, |env, res| {
         match res {
             Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
-            Err(e) => ScyllaResult::Err(e.to_string()),
+            Err(e) => ScyllaResult::Err(e.ex()),
         }
     });
     Ok(atom::ok())
@@ -338,11 +322,7 @@ fn s_query_paged<'a>(
     values: Vec<Term<'a>>,
     paging_state: Option<ScyllaPageState>,
 ) -> NifResult<Atom> {
-    let mut cql_values: Vec<CqlValue> = Vec::new();
-    for term in values {
-        let sv: ScyllaValue = term.decode()?;
-        cql_values.push(sv.into());
-    }
+    let cql_values = decode_values(values)?;
     let paging_state = paging_state.map(|s| s.0).unwrap_or(scylla::response::PagingState::start());
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
@@ -356,7 +336,7 @@ fn s_query_paged<'a>(
                 }
                 ScyllaResult::Ok(scylla_qr)
             },
-            Err(e) => ScyllaResult::Err(e.to_string()),
+            Err(e) => ScyllaResult::Err(e.ex()),
         }
     });
     Ok(atom::ok())

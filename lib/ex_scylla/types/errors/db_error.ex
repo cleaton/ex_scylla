@@ -1,4 +1,8 @@
 defmodule ExScylla.Types.Errors.DbError do
+  @moduledoc """
+  Represents an error returned by the database.
+  Maps to `scylla::transport::errors::DbError`.
+  """
   alias ExScylla.Macros.Native
   @type msg :: String.t()
   @typedoc """

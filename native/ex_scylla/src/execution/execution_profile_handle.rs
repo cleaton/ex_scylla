@@ -1,6 +1,5 @@
 use rustler::ResourceArc;
 use scylla::client::execution_profile::ExecutionProfileHandle;
-use std::cell::Cell;
 use std::sync::Mutex;
 
 use super::execution_profile::ExecutionProfileResource;
@@ -21,7 +20,7 @@ fn eph_pointee_to_builder(
     ephr: ResourceArc<ExecutionProfileHandleResource>,
 ) -> ResourceArc<ExecutionProfileBuilderResource> {
     let eph: ExecutionProfileHandle = ephr.0.clone();
-    ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(Cell::new(
+    ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(
         eph.pointee_to_builder()
-    ))))
+    )))
 }

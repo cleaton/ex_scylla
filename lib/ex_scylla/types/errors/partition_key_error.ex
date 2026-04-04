@@ -1,4 +1,8 @@
 defmodule ExScylla.Types.Errors.PartitionKeyError do
+  @moduledoc """
+  Represents an error related to a partition key.
+  Maps to `scylla::statement::prepared_statement::PartitionKeyError`.
+  """
   alias ExScylla.Macros.Native
   @type msg :: String.t()
   @typedoc """

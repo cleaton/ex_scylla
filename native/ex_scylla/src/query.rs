@@ -36,12 +36,6 @@ fn q_set_request_timeout(q: ResourceArc<QueryResource>, timeout_ms: Option<u64>)
 }
 
 #[rustler::nif]
-fn q_disable_paging(q: ResourceArc<QueryResource>) -> ResourceArc<QueryResource> {
-    // In 1.5, disable_paging might be gone or changed.
-    q
-}
-
-#[rustler::nif]
 fn q_get_consistency(q: ResourceArc<QueryResource>) -> Option<ScyllaConsistency> {
     let q: &Query = &q.0;
     q.get_consistency().map(|c| c.into())
@@ -54,9 +48,9 @@ fn q_get_is_idempotent(q: ResourceArc<QueryResource>) -> bool {
 }
 
 #[rustler::nif]
-fn q_get_page_size(q: ResourceArc<QueryResource>) -> Option<i32> {
+fn q_get_page_size(q: ResourceArc<QueryResource>) -> i32 {
     let q: &Query = &q.0;
-    Some(q.get_page_size())
+    q.get_page_size()
 }
 
 #[rustler::nif]

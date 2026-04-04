@@ -1,4 +1,8 @@
 defmodule ExScylla.Types.Errors.BadQuery do
+  @moduledoc """
+  Represents an error related to a bad query.
+  Maps to `scylla::transport::errors::BadQuery`.
+  """
   alias ExScylla.Macros.Native
   alias ExScylla.Types.Errors.SerializeValuesError
   alias ExScylla.Types.Errors.BadKeyspaceName

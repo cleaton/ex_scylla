@@ -1,4 +1,4 @@
-use std::{cell::Cell, sync::Mutex};
+use std::sync::Mutex;
 
 use rustler::ResourceArc;
 use scylla::client::execution_profile::ExecutionProfile;
@@ -12,9 +12,9 @@ pub struct ExecutionProfileResource(pub ExecutionProfile);
 
 #[rustler::nif]
 pub fn ep_builder() -> ResourceArc<ExecutionProfileBuilderResource> {
-    ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(Cell::new(
+    ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(
         ExecutionProfile::builder(),
-    ))))
+    )))
 }
 
 #[rustler::nif]
@@ -42,7 +42,7 @@ pub fn ep_into_handle_with_label(
 pub fn ep_to_builder(
     ep: ResourceArc<ExecutionProfileResource>,
 ) -> ResourceArc<ExecutionProfileBuilderResource> {
-    ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(Cell::new(
+    ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(
         ep.0.to_builder(),
-    ))))
+    )))
 }

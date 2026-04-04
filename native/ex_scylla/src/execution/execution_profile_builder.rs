@@ -3,9 +3,8 @@ use crate::types::*;
 use rustler::ResourceArc;
 use scylla::client::execution_profile::ExecutionProfileBuilder;
 use scylla::statement::SerialConsistency;
-use std::cell::Cell;
 use std::ops::Deref;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use super::speculative_execution::ScyllaSpeculativeExecutionPolicy;
@@ -13,10 +12,10 @@ use super::execution_profile::ExecutionProfileResource;
 use super::load_balancing::LoadBalancingPolicyResource;
 use super::retry_policy::ScyllaRetryPolicy;
 
-pub struct ExecutionProfileBuilderResource(pub Mutex<Cell<ExecutionProfileBuilder>>);
+pub struct ExecutionProfileBuilderResource(pub Mutex<ExecutionProfileBuilder>);
 
 impl Deref for ExecutionProfileBuilderResource {
-    type Target = Mutex<Cell<ExecutionProfileBuilder>>;
+    type Target = Mutex<ExecutionProfileBuilder>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -24,8 +23,9 @@ impl Deref for ExecutionProfileBuilderResource {
 
 macro_rules! use_builder {
     ($epbr:ident, $e:expr) => {
-        let guard = $epbr.lock().unwrap();
-        guard.set($e(guard.take()));
+        let mut guard = $epbr.lock().unwrap();
+        let builder = std::mem::replace(&mut *guard, ExecutionProfileBuilder::default());
+        *guard = $e(builder);
         drop(guard);
     };
 }
@@ -34,8 +34,8 @@ macro_rules! use_builder {
 fn epb_build(
     epbr: ResourceArc<ExecutionProfileBuilderResource>,
 ) -> ResourceArc<ExecutionProfileResource> {
-    let mut guard: MutexGuard<Cell<ExecutionProfileBuilder>> = epbr.0.lock().unwrap();
-    let epbc = guard.get_mut().clone();
+    let guard = epbr.0.lock().unwrap();
+    let epbc = guard.clone();
     drop(guard);
     ResourceArc::new(ExecutionProfileResource(epbc.build()))
 }

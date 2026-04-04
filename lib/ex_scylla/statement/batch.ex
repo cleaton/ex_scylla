@@ -48,7 +48,7 @@ defmodule ExScylla.Statement.Batch do
   native_f func: :get_consistency,
            args: [batch],
            args_spec: [T.batch()],
-           return_spec: T.consitency() | nil,
+           return_spec: T.consistency() | nil,
            doc_example: """
            iex> b = Batch.new(:unlogged)
            iex> Batch.get_consistency(b)

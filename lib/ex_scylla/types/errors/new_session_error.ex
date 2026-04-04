@@ -1,4 +1,8 @@
 defmodule ExScylla.Types.Errors.NewSessionError do
+  @moduledoc """
+  Represents an error that can occur when creating a new session.
+  Maps to `scylla::transport::errors::NewSessionError`.
+  """
   alias ExScylla.Macros.Native
   alias ExScylla.Types.Errors.DbError
   alias ExScylla.Types.Errors.BadQuery

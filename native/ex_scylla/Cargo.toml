@@ -10,12 +10,11 @@ path = "src/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-rustler_bigint = { git = "https://github.com/rusterlium/rustler", branch = "master" }
-rustler = { git = "https://github.com/rusterlium/rustler", branch = "master" }
+rustler_bigint = { git = "https://github.com/rusterlium/rustler", rev = "af496eeab3c12ed2968288d2d9f8cca517d5f4bc" }
+rustler = { git = "https://github.com/rusterlium/rustler", rev = "af496eeab3c12ed2968288d2d9f8cca517d5f4bc" }
 scylla = { version = "1.5.0", features = ["full-serialization", "metrics", "chrono-04", "bigdecimal-04", "num-bigint-03", "unstable-nodejs-rs"] }
 scylla-cql = { version = "1.5.0", features = ["full-serialization", "unstable-nodejs-rs"] }
 bytes = "1.4"
-once_cell = "^1.18"
 tokio = { version = "^1.32", features = ["full"] }
 futures = "^0.3"
 uuid = "^1.4"

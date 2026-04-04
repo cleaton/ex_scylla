@@ -3,7 +3,6 @@ use scylla::{
     frame::response::result::PartitionKeyIndex,
     statement::prepared::PreparedStatement,
 };
-use scylla_cql::frame::response::result::PreparedMetadata;
 
 use crate::{
     session::types::*,
