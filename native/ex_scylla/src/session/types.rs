@@ -578,30 +578,55 @@ pub struct ScyllaColumnSpec {
 #[derive(Debug, NifTaggedEnum)]
 pub enum ScyllaColumnType {
     Custom(String),
+    #[rustler(rename = "ascii")]
     Ascii,
+    #[rustler(rename = "boolean")]
     Boolean,
+    #[rustler(rename = "blob")]
     Blob,
+    #[rustler(rename = "counter")]
     Counter,
+    #[rustler(rename = "date")]
     Date,
+    #[rustler(rename = "decimal")]
     Decimal,
+    #[rustler(rename = "double")]
     Double,
+    #[rustler(rename = "duration")]
     Duration,
+    #[rustler(rename = "float")]
     Float,
+    #[rustler(rename = "int")]
     Int,
+    #[rustler(rename = "big_int")]
     BigInt,
+    #[rustler(rename = "text")]
     Text,
+    #[rustler(rename = "timestamp")]
     Timestamp,
+    #[rustler(rename = "inet")]
     Inet,
+    #[rustler(rename = "list")]
     List(Box<ScyllaColumnType>),
+    #[rustler(rename = "map")]
     Map((Box<ScyllaColumnType>, Box<ScyllaColumnType>)),
+    #[rustler(rename = "set")]
     Set(Box<ScyllaColumnType>),
+    #[rustler(rename = "user_defined_type")]
     UserDefinedType(ScyllaUserDefinedColumnType),
+    #[rustler(rename = "small_int")]
     SmallInt,
+    #[rustler(rename = "tiny_int")]
     TinyInt,
+    #[rustler(rename = "time")]
     Time,
+    #[rustler(rename = "timeuuid")]
     Timeuuid,
+    #[rustler(rename = "tuple")]
     Tuple(Vec<ScyllaColumnType>),
+    #[rustler(rename = "uuid")]
     Uuid,
+    #[rustler(rename = "varint")]
     Varint,
 }
 

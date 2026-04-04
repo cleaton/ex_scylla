@@ -15,14 +15,8 @@ defmodule ExScylla.Types.QueryResult do
          serialized_size: non_neg_integer()
 
   def decode(%__MODULE__{rows: rows_bin, rows_count: rows_count, column_types: types} = res) do
-    # Normalize types once per query, not per row/column!
-    normalized_types = Enum.map(types, fn
-      atom when is_atom(atom) -> atom |> to_string() |> String.downcase() |> String.to_atom()
-      other -> other
-    end)
-
     decoded_rows = if is_binary(rows_bin) do
-      decode_rows(rows_bin, rows_count, normalized_types)
+      decode_rows(rows_bin, rows_count, types)
     else
       rows_bin
     end
@@ -31,14 +25,8 @@ defmodule ExScylla.Types.QueryResult do
   end
 
   def decode_raw(%__MODULE__{rows: rows_bin, rows_count: rows_count, column_types: types, warnings: warnings, tracing_id: tracing_id, paging_state: paging_state, serialized_size: serialized_size}) do
-    # Normalize types once per query, not per row/column!
-    normalized_types = Enum.map(types, fn
-      atom when is_atom(atom) -> atom |> to_string() |> String.downcase() |> String.to_atom()
-      other -> other
-    end)
-
     decoded_rows = if is_binary(rows_bin) do
-      decode_rows_raw(rows_bin, rows_count, normalized_types)
+      decode_rows_raw(rows_bin, rows_count, types)
     else
       rows_bin
     end
@@ -100,11 +88,19 @@ defmodule ExScylla.Types.QueryResult do
         <<v::signed-size(64)>> = val_bin
         v
       :uuid ->
-        <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> = val_bin
-        "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+        case val_bin do
+          <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> ->
+            "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+          _ ->
+            val_bin
+        end
       :timeuuid ->
-        <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> = val_bin
-        "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+        case val_bin do
+          <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> ->
+            "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+          _ ->
+            val_bin
+        end
       :inet ->
         case byte_size(val_bin) do
           4 ->
@@ -113,6 +109,8 @@ defmodule ExScylla.Types.QueryResult do
           16 ->
             <<a::16, b::16, c::16, d::16, e::16, f::16, g::16, h::16>> = val_bin
             {a, b, c, d, e, f, g, h}
+          _ ->
+            val_bin
         end
       _ ->
         ExScylla.CQLTypes.decode_value(val_bin, type)
@@ -152,11 +150,19 @@ defmodule ExScylla.Types.QueryResult do
         <<v::signed-size(64)>> = val_bin
         v
       :uuid ->
-        <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> = val_bin
-        "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+        case val_bin do
+          <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> ->
+            "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+          _ ->
+            val_bin
+        end
       :timeuuid ->
-        <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> = val_bin
-        "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+        case val_bin do
+          <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> ->
+            "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+          _ ->
+            val_bin
+        end
       :inet ->
         case byte_size(val_bin) do
           4 ->
@@ -165,6 +171,8 @@ defmodule ExScylla.Types.QueryResult do
           16 ->
             <<a::16, b::16, c::16, d::16, e::16, f::16, g::16, h::16>> = val_bin
             {a, b, c, d, e, f, g, h}
+          _ ->
+            val_bin
         end
       _ ->
         ExScylla.CQLTypes.decode_value(val_bin, type)

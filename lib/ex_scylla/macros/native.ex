@@ -225,11 +225,15 @@ defmodule ExScylla.Macros.Native do
 
         """
         #{str}
-        iex> #{result_var}= receive do
-        ...>   {^opaque, r} -> r
-        ...>  after
-        ...>    5_000 -> :timeout
-        ...>  end
+        iex> #{result_var} = receive do
+        ...>   {^opaque, r} ->
+        ...>     case r do
+        ...>       {:ok, %ExScylla.Types.QueryResult{} = res} -> {:ok, ExScylla.Types.QueryResult.decode(res)}
+        ...>       other -> other
+        ...>     end
+        ...> after
+        ...>   5_000 -> :timeout
+        ...> end
         """
         |> String.trim_trailing("\n")
       else
