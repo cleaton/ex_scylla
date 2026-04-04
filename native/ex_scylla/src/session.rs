@@ -24,6 +24,8 @@ fn decode_values<'a>(values: Vec<Term<'a>>) -> NifResult<Vec<CqlValue>> {
     Ok(cql_values)
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_await_schema_agreement<'a>(
     env: Env<'a>,
@@ -41,6 +43,8 @@ fn s_await_schema_agreement<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_await_timed_schema_agreement<'a>(
     env: Env<'a>,
@@ -64,6 +68,8 @@ fn s_await_timed_schema_agreement<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_batch<'a>(
     env: Env<'a>,
@@ -127,6 +133,8 @@ pub fn s_calculate_token_for_partition_key<'a>(
     }
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_check_schema_agreement<'a>(
     env: Env<'a>,
@@ -144,6 +152,8 @@ fn s_check_schema_agreement<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_execute<'a>(
     env: Env<'a>,
@@ -171,6 +181,8 @@ fn s_execute<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_execute_paged<'a>(
     env: Env<'a>,
@@ -226,6 +238,8 @@ fn s_get_default_execution_profile_handle(
     ))
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_prepare_batch<'a>(
     env: Env<'a>,
@@ -257,6 +271,8 @@ fn s_get_metrics(session: ResourceArc<SessionResource>) -> ScyllaMetrics {
     (&*session.get_metrics()).into()
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_get_tracing_info<'a>(
     env: Env<'a>,
@@ -277,6 +293,8 @@ fn s_get_tracing_info<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_fetch_schema_version<'a>(
     env: Env<'a>,
@@ -294,6 +312,8 @@ fn s_fetch_schema_version<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_prepare<'a>(
     env: Env<'a>,
@@ -312,6 +332,8 @@ fn s_prepare<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_query<'a>(
     env: Env<'a>,
@@ -338,6 +360,8 @@ fn s_query<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_query_paged<'a>(
     env: Env<'a>,
@@ -377,6 +401,8 @@ fn s_query_paged<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_refresh_metadata<'a>(
     env: Env<'a>,
@@ -394,6 +420,8 @@ fn s_refresh_metadata<'a>(
     .map(|_| atom::ok())
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn s_use_keyspace<'a>(
     env: Env<'a>,

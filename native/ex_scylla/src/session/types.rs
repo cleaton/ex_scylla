@@ -1,4 +1,3 @@
-use crate::errors::ScyllaError;
 use crate::prepared_statement::types::PreparedStatementResource;
 use crate::query::types::QueryResource;
 use crate::utils::*;
@@ -159,12 +158,6 @@ pub struct ScyllaQueryResult<'a> {
     pub tracing_id: Option<ScyllaBinary>,
     pub paging_state: Option<ScyllaBinary>,
     pub serialized_size: usize,
-}
-
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.Row"]
-pub struct ScyllaRow {
-    pub columns: Vec<Option<ScyllaValue>>,
 }
 
 #[derive(NifStruct, Debug)]
@@ -510,7 +503,7 @@ impl ToElixir<ScyllaUuid> for uuid::Uuid {
 }
 
 pub struct ScyllaPageState(pub scylla::response::PagingState);
-impl<'a> Encoder for ScyllaPageState {
+impl Encoder for ScyllaPageState {
     fn encode<'b>(&self, env: Env<'b>) -> Term<'b> {
         let bytes = self.0.as_bytes_slice().map(|arc| &**arc).unwrap_or(&[]);
         let mut nb = NewBinary::new(env, bytes.len());
@@ -746,64 +739,6 @@ impl ToElixir<ScyllaColumnSpec> for ColumnSpec<'_> {
             },
             name: self.name().to_string(),
             typ: self.typ().clone().into(),
-        }
-    }
-}
-
-use scylla_cql::serialize::value::SerializeValue;
-use scylla_cql::serialize::writers::{CellWriter, WrittenCellProof};
-use scylla_cql::serialize::SerializationError;
-
-pub struct ScyllaTerm<'a>(pub Term<'a>);
-
-impl<'a> SerializeValue for ScyllaTerm<'a> {
-    fn serialize<'b>(
-        &self,
-        typ: &ColumnType,
-        writer: CellWriter<'b>,
-    ) -> Result<WrittenCellProof<'b>, SerializationError> {
-        let term = self.0;
-        match typ {
-            ColumnType::Native(nt) => match nt {
-                NativeType::Ascii | NativeType::Text => {
-                    let s: String = term.decode().map_err(|_| {
-                        SerializationError::new(ScyllaError::parse("Expected string"))
-                    })?;
-                    s.serialize(typ, writer)
-                }
-                NativeType::Int => {
-                    let i: i32 = term
-                        .decode()
-                        .map_err(|_| SerializationError::new(ScyllaError::parse("Expected i32")))?;
-                    i.serialize(typ, writer)
-                }
-                NativeType::BigInt => {
-                    let i: i64 = term
-                        .decode()
-                        .map_err(|_| SerializationError::new(ScyllaError::parse("Expected i64")))?;
-                    i.serialize(typ, writer)
-                }
-                NativeType::Boolean => {
-                    let b: bool = term.decode().map_err(|_| {
-                        SerializationError::new(ScyllaError::parse("Expected boolean"))
-                    })?;
-                    b.serialize(typ, writer)
-                }
-                NativeType::Blob => {
-                    let b: Binary = term.decode().map_err(|_| {
-                        SerializationError::new(ScyllaError::parse("Expected binary"))
-                    })?;
-                    b.as_slice().serialize(typ, writer)
-                }
-                _ => Err(SerializationError::new(ScyllaError::parse(&format!(
-                    "Unsupported native type for lazy serialization: {:?}",
-                    nt
-                )))),
-            },
-            _ => Err(SerializationError::new(ScyllaError::parse(&format!(
-                "Unsupported type for lazy serialization: {:?}",
-                typ
-            )))),
         }
     }
 }

@@ -58,6 +58,8 @@ fn sb_auto_schema_agreement_timeout(
     sbr
 }
 
+// async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
+#[allow(unused_must_use)]
 #[rustler::nif]
 fn sb_build<'a>(
     env: Env<'a>,
