@@ -19,12 +19,11 @@ Application.ensure_all_started(:erlcass)
 
 # Create a test table
 table_query = """
-CREATE TABLE IF NOT EXISTS bench_large.test_table(
+CREATE TABLE IF NOT EXISTS bench_large.test_table_simple(
   pk int,
   ck int,
   val1 text,
   val2 bigint,
-  val3 uuid,
   PRIMARY KEY (pk, ck)
 );
 """
@@ -32,7 +31,7 @@ CREATE TABLE IF NOT EXISTS bench_large.test_table(
 
 # Insert 1000 rows for pk=1
 IO.puts("Inserting 1000 rows...")
-insert_query = "INSERT INTO bench_large.test_table(pk, ck, val1, val2, val3) VALUES (?, ?, ?, ?, ?)"
+insert_query = "INSERT INTO bench_large.test_table_simple(pk, ck, val1, val2) VALUES (?, ?, ?, ?)"
 {:ok, ps_insert} = Session.prepare(session, insert_query)
 
 # Batch insert for speed
@@ -41,30 +40,29 @@ for i <- 1..1000 do
     {:int, 1},
     {:int, i},
     {:text, "value_#{i}"},
-    {:big_int, i * 100},
-    {:uuid, "550e8400-e29b-41d4-a716-446655440000"}
+    {:big_int, i * 100}
   ]
   {:ok, _} = Session.execute(session, ps_insert, values)
 end
 
 # Prepare select statement
-select_query = "SELECT pk, ck, val1, val2, val3 FROM bench_large.test_table WHERE pk = ?"
+select_query = "SELECT pk, ck, val1, val2 FROM bench_large.test_table_simple WHERE pk = ?"
 {:ok, ps_select} = Session.prepare(session, select_query)
 
 # erlcass setup
-# :ok = :erlcass.add_prepare_statement(:testing_query_large, {select_query, 1})
+:ok = :erlcass.add_prepare_statement(:testing_query_large, {select_query, 1})
 
 IO.puts("Starting benchmark (1000 rows per query)...")
 
 Benchee.run(
   %{
-    # "erlcass" => fn ->
-    #   {:ok, _Tag} = :erlcass.async_execute(:testing_query_large, [1])
-    #   receive do
-    #     {:execute_statement_result, _, {:ok, _, _}} -> :ok
-    #     other -> IO.inspect(other)
-    #   end
-    # end,
+    "erlcass" => fn ->
+      {:ok, _Tag} = :erlcass.async_execute(:testing_query_large, [1])
+      receive do
+        {:execute_statement_result, _, {:ok, _, _}} -> :ok
+        other -> IO.inspect(other)
+      end
+    end,
     "exscylla (typed)" => fn ->
       {:ok, _res} = Session.execute(session, ps_select, [{:int, 1}])
     end,

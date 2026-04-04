@@ -26,7 +26,8 @@ defmodule ExScylla.Types.QueryResult do
 
   def decode_raw(%__MODULE__{rows: rows_bin, rows_count: rows_count, column_types: types, warnings: warnings, tracing_id: tracing_id, paging_state: paging_state, serialized_size: serialized_size}) do
     decoded_rows = if is_binary(rows_bin) do
-      decode_rows_raw(rows_bin, rows_count, types)
+      # Ultra-optimized row decoding for raw API
+      decode_rows_raw_fast(rows_bin, rows_count, types, [])
     else
       rows_bin
     end
@@ -40,6 +41,74 @@ defmodule ExScylla.Types.QueryResult do
       paging_state: paging_state,
       serialized_size: serialized_size
     }
+  end
+
+  # Optimized row-at-a-time decoding to minimize function calls and Enum.reverse
+  defp decode_rows_raw_fast(_bin, 0, _types, acc), do: Enum.reverse(acc)
+  defp decode_rows_raw_fast(bin, count, types, acc) do
+    {row, rest} = decode_one_row_raw(bin, types, [])
+    decode_rows_raw_fast(rest, count - 1, types, [row | acc])
+  end
+
+  defp decode_one_row_raw(bin, [], row_acc), do: {Enum.reverse(row_acc), bin}
+  defp decode_one_row_raw(<<-1::signed-size(32), rest::binary>>, [_type | types], row_acc) do
+    decode_one_row_raw(rest, types, [nil | row_acc])
+  end
+  defp decode_one_row_raw(<<len::signed-size(32), val_bin::binary-size(len), rest::binary>>, [type | types], row_acc) do
+    val = case type do
+      :int ->
+        <<v::signed-size(32)>> = val_bin
+        v
+      :big_int ->
+        <<v::signed-size(64)>> = val_bin
+        v
+      :text -> val_bin
+      :ascii -> val_bin
+      :varchar -> val_bin
+      :blob -> val_bin
+      :boolean ->
+        case val_bin do
+          <<0>> -> false
+          <<1>> -> true
+        end
+      :float ->
+        <<v::float-size(32)>> = val_bin
+        v
+      :double ->
+        <<v::float-size(64)>> = val_bin
+        v
+      :timestamp ->
+        <<v::signed-size(64)>> = val_bin
+        v
+      :uuid ->
+        case val_bin do
+          <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> ->
+            "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+          _ ->
+            val_bin
+        end
+      :timeuuid ->
+        case val_bin do
+          <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> ->
+            "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+          _ ->
+            val_bin
+        end
+      :inet ->
+        case byte_size(val_bin) do
+          4 ->
+            <<a, b, c, d>> = val_bin
+            {a, b, c, d}
+          16 ->
+            <<a::16, b::16, c::16, d::16, e::16, f::16, g::16, h::16>> = val_bin
+            {a, b, c, d, e, f, g, h}
+          _ ->
+            val_bin
+        end
+      _ ->
+        ExScylla.CQLTypes.decode_value(val_bin, type)
+    end
+    decode_one_row_raw(rest, types, [val | row_acc])
   end
 
   def decode_rows(bin, count, types), do: decode_rows(bin, count, types, [])
