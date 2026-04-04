@@ -9,10 +9,15 @@ defmodule ExScylla.Examples.TracingTest do
     session = TestSupport.get_session()
     TestSupport.setup_simple_keyspace(session, "tracing_test")
     :ok = Session.use_keyspace(session, "tracing_test", false)
-    
+
     # Create a table for testing
-    {:ok, _} = Session.query(session, "CREATE TABLE IF NOT EXISTS tracing (a int PRIMARY KEY, b text);", [])
-    
+    {:ok, _} =
+      Session.query(
+        session,
+        "CREATE TABLE IF NOT EXISTS tracing (a int PRIMARY KEY, b text);",
+        []
+      )
+
     [session: session]
   end
 
@@ -20,7 +25,7 @@ defmodule ExScylla.Examples.TracingTest do
     q = Query.new("SELECT * FROM tracing") |> Query.set_tracing(true)
     {:ok, %QueryResult{tracing_id: tid}} = Session.query(session, q, [])
     assert is_binary(tid)
-    
+
     # Tracing info might take a moment to be persisted by Scylla
     # In a real app we might retry, here we just sleep a bit
     Process.sleep(200)

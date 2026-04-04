@@ -1,21 +1,21 @@
 pub mod types;
-use rustler::env::{OwnedEnv, SavedTerm};
-use scylla::client::execution_profile::ExecutionProfileHandle;
 use super::runtime;
 use crate::execution::execution_profile_handle::ExecutionProfileHandleResource;
 use crate::execution::pool_size::ScyllaPoolSize;
+use crate::session::types::ScyllaSocketAddr;
+use crate::types::*;
+use crate::utils::*;
+use rustler::env::{OwnedEnv, SavedTerm};
 use rustler::types::atom;
 use rustler::{Atom, Encoder, Env, NifResult, ResourceArc, Term};
+use scylla::client::execution_profile::ExecutionProfileHandle;
 use scylla::client::session_builder::SessionBuilder;
+use std::cell::Cell;
 use std::net::SocketAddr;
 use std::num::NonZeroU32;
 use std::sync::Mutex;
 use std::time::Duration;
-use crate::types::*;
-use crate::utils::*;
-use std::cell::Cell;
 use types::*;
-use crate::session::types::ScyllaSocketAddr;
 
 macro_rules! use_builder {
     ($sbr:ident, $e:expr) => {
@@ -29,10 +29,12 @@ macro_rules! use_builder {
 #[rustler::nif]
 fn sb_default_execution_profile_handle(
     sbr: ResourceArc<SessionBuilderResource>,
-    ephr: ResourceArc<ExecutionProfileHandleResource>
+    ephr: ResourceArc<ExecutionProfileHandleResource>,
 ) -> ResourceArc<SessionBuilderResource> {
     let eph: &ExecutionProfileHandle = &ephr.0;
-    use_builder!(sbr, |sb: SessionBuilder| { sb.default_execution_profile_handle(eph.clone()) });
+    use_builder!(sbr, |sb: SessionBuilder| {
+        sb.default_execution_profile_handle(eph.clone())
+    });
     sbr
 }
 
@@ -66,8 +68,8 @@ fn sb_build<'a>(
     async_elixir!(env, opaque, {
         let res = sb.build().await;
         res.ex()
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -199,7 +201,9 @@ fn sb_new() -> ResourceArc<SessionBuilderResource> {
 fn sb_no_auto_schema_agreement(
     sbr: ResourceArc<SessionBuilderResource>,
 ) -> ResourceArc<SessionBuilderResource> {
-    use_builder!(sbr, |sb: SessionBuilder| { sb.auto_await_schema_agreement(false) });
+    use_builder!(sbr, |sb: SessionBuilder| {
+        sb.auto_await_schema_agreement(false)
+    });
     sbr
 }
 #[rustler::nif]

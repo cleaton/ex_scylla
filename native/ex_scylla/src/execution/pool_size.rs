@@ -9,13 +9,13 @@ pub enum ScyllaPoolSize {
     PerShard(usize),
 }
 
-impl Into<PoolSize> for ScyllaPoolSize {
-    fn into(self) -> PoolSize {
-        match self {
-            Self::PerHost(v) => {
+impl From<ScyllaPoolSize> for PoolSize {
+    fn from(val: ScyllaPoolSize) -> Self {
+        match val {
+            ScyllaPoolSize::PerHost(v) => {
                 PoolSize::PerHost(v.try_into().expect("invalid per-host pool size"))
             }
-            Self::PerShard(v) => {
+            ScyllaPoolSize::PerShard(v) => {
                 PoolSize::PerShard(v.try_into().expect("invalid per-shard pool size"))
             }
         }

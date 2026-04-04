@@ -10,8 +10,11 @@ use scylla::policies::load_balancing::LoadBalancingPolicy;
 use scylla::policies::load_balancing::{DefaultPolicyBuilder, LatencyAwarenessBuilder};
 
 pub struct DefaultPolicyBuilderResource(pub Mutex<Cell<DefaultPolicyBuilder>>);
+impl std::panic::RefUnwindSafe for DefaultPolicyBuilderResource {}
 pub struct LatencyAwarenessPolicyBuilderResource(pub Mutex<Cell<LatencyAwarenessBuilder>>);
+impl std::panic::RefUnwindSafe for LatencyAwarenessPolicyBuilderResource {}
 pub struct LoadBalancingPolicyResource(pub Arc<dyn LoadBalancingPolicy>);
+impl std::panic::RefUnwindSafe for LoadBalancingPolicyResource {}
 
 macro_rules! use_builder {
     ($dpbr:ident, $e:expr) => {
@@ -117,7 +120,6 @@ fn dpb_token_aware(
     dpbr
 }
 
-
 #[rustler::nif]
 fn lab_exclusion_threshold(
     labr: ResourceArc<LatencyAwarenessPolicyBuilderResource>,
@@ -142,7 +144,9 @@ fn lab_minimum_measurements(
 
 #[rustler::nif]
 fn lab_new() -> ResourceArc<LatencyAwarenessPolicyBuilderResource> {
-    ResourceArc::new(LatencyAwarenessPolicyBuilderResource(Mutex::new(Cell::new(LatencyAwarenessBuilder::new()))))
+    ResourceArc::new(LatencyAwarenessPolicyBuilderResource(Mutex::new(
+        Cell::new(LatencyAwarenessBuilder::new()),
+    )))
 }
 
 #[rustler::nif]
@@ -180,5 +184,7 @@ fn lab_update_rate(
 
 #[rustler::nif]
 fn dp_default() -> ResourceArc<LoadBalancingPolicyResource> {
-    ResourceArc::new(LoadBalancingPolicyResource(Arc::new(DefaultPolicy::default())))
+    ResourceArc::new(LoadBalancingPolicyResource(Arc::new(
+        DefaultPolicy::default(),
+    )))
 }

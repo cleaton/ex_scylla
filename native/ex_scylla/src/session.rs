@@ -9,11 +9,11 @@ use crate::utils::*;
 use rustler::env::{OwnedEnv, SavedTerm};
 use rustler::types::atom;
 use rustler::{Atom, Encoder, Env, NifResult, ResourceArc, Term};
-use scylla::statement::batch::Batch;
 use scylla::client::session::Session;
+use scylla::response::PagingStateResponse;
+use scylla::statement::batch::Batch;
 use scylla::value::CqlValue;
 use types::*;
-use scylla::response::PagingStateResponse;
 
 fn decode_values<'a>(values: Vec<Term<'a>>) -> NifResult<Vec<CqlValue>> {
     let mut cql_values: Vec<CqlValue> = Vec::new();
@@ -37,8 +37,8 @@ fn s_await_schema_agreement<'a>(
             Ok(_id) => ScyllaResult::Unwrapped(atom::ok()),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -52,15 +52,16 @@ fn s_await_timed_schema_agreement<'a>(
         let session: &Session = &session.0;
         let res = tokio::time::timeout(
             Duration::from_millis(timeout_ms),
-            session.await_schema_agreement()
-        ).await;
+            session.await_schema_agreement(),
+        )
+        .await;
         match res {
             Ok(Ok(_id)) => ScyllaResult::Ok(true),
             Ok(Err(e)) => ScyllaResult::Err(e.to_string()),
             Err(_) => ScyllaResult::Err("timeout".to_string()),
         }
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -75,28 +76,33 @@ fn s_batch<'a>(
     for row_terms in values {
         row_values.push(decode_values(row_terms)?);
     }
-    
-    async_elixir!(env, opaque, {
-        let session: &Session = &session.0;
-        let batch: &Batch = &batch.0;
-        session.batch(batch, row_values).await
-    }, |env, res| {
-        match res {
-            Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
-            Err(e) => ScyllaResult::Err(e.ex()),
+
+    async_elixir!(
+        env,
+        opaque,
+        {
+            let session: &Session = &session.0;
+            let batch: &Batch = &batch.0;
+            session.batch(batch, row_values).await
+        },
+        |env, res| {
+            match res {
+                Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
+                Err(e) => ScyllaResult::Err(e.ex()),
+            }
         }
-    });
-    Ok(atom::ok())
+    )
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
 fn s_calculate_token<'a>(
-    _session: ResourceArc<SessionResource>, 
-    prepared: ResourceArc<PreparedStatementResource>, 
-    values: Vec<Term<'a>>
+    _session: ResourceArc<SessionResource>,
+    prepared: ResourceArc<PreparedStatementResource>,
+    values: Vec<Term<'a>>,
 ) -> NifResult<Option<ScyllaToken>> {
     let cql_values = decode_values(values)?;
-    
+
     match prepared.0.calculate_token(&cql_values) {
         Ok(token) => Ok(token.map(|t| t.into())),
         Err(_) => Ok(None),
@@ -134,8 +140,8 @@ fn s_check_schema_agreement<'a>(
             Ok(agree) => ScyllaResult::Ok(agree.is_some()),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -148,16 +154,21 @@ fn s_execute<'a>(
 ) -> NifResult<Atom> {
     let cql_values = decode_values(values)?;
 
-    async_elixir!(env, opaque, {
-        let session: &Session = &session.0;
-        session.execute_unpaged(&prepared.0, cql_values).await
-    }, |env, res| {
-        match res {
-            Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
-            Err(e) => ScyllaResult::Err(e.ex()),
+    async_elixir!(
+        env,
+        opaque,
+        {
+            let session: &Session = &session.0;
+            session.execute_unpaged(&prepared.0, cql_values).await
+        },
+        |env, res| {
+            match res {
+                Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
+                Err(e) => ScyllaResult::Err(e.ex()),
+            }
         }
-    });
-    Ok(atom::ok())
+    )
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -170,25 +181,33 @@ fn s_execute_paged<'a>(
     paging_state: Option<ScyllaPageState>,
 ) -> NifResult<Atom> {
     let cql_values = decode_values(values)?;
-    let paging_state = paging_state.map(|s| s.0).unwrap_or(scylla::response::PagingState::start());
-    async_elixir!(env, opaque, {
-        let session: &Session = &session.0;
-        session
-            .execute_single_page(&prepared.0, cql_values, paging_state)
-            .await
-    }, |env, res| {
-        match res {
-            Ok((qr, psr)) => {
-                let mut scylla_qr = ScyllaQueryResult::new(env, qr);
-                if let PagingStateResponse::HasMorePages { state } = psr {
-                    scylla_qr.paging_state = state.as_bytes_slice().map(|arc| ScyllaBinary(arc.to_vec()));
+    let paging_state = paging_state
+        .map(|s| s.0)
+        .unwrap_or(scylla::response::PagingState::start());
+    async_elixir!(
+        env,
+        opaque,
+        {
+            let session: &Session = &session.0;
+            session
+                .execute_single_page(&prepared.0, cql_values, paging_state)
+                .await
+        },
+        |env, res| {
+            match res {
+                Ok((qr, psr)) => {
+                    let mut scylla_qr = ScyllaQueryResult::new(env, qr);
+                    if let PagingStateResponse::HasMorePages { state } = psr {
+                        scylla_qr.paging_state =
+                            state.as_bytes_slice().map(|arc| ScyllaBinary(arc.to_vec()));
+                    }
+                    ScyllaResult::Ok(scylla_qr)
                 }
-                ScyllaResult::Ok(scylla_qr)
-            },
-            Err(e) => ScyllaResult::Err(e.ex()),
+                Err(e) => ScyllaResult::Err(e.ex()),
+            }
         }
-    });
-    Ok(atom::ok())
+    )
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -222,8 +241,8 @@ fn s_prepare_batch<'a>(
             Ok(b) => ScyllaResult::Ok(ResourceArc::new(BatchResource(b))),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -245,7 +264,8 @@ fn s_get_tracing_info<'a>(
     session: ResourceArc<SessionResource>,
     tracing_id: ScyllaBinary,
 ) -> NifResult<Atom> {
-    let tracing_id = uuid::Uuid::from_slice(&tracing_id.0).map_err(|_| rustler::Error::Atom("invalid_uuid"))?;
+    let tracing_id =
+        uuid::Uuid::from_slice(&tracing_id.0).map_err(|_| rustler::Error::Atom("invalid_uuid"))?;
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         let res = session.get_tracing_info(&tracing_id).await;
@@ -253,8 +273,8 @@ fn s_get_tracing_info<'a>(
             Ok(ti) => ScyllaResult::Ok(ScyllaTracingInfo::from(ti)),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -270,8 +290,8 @@ fn s_fetch_schema_version<'a>(
             Ok(id) => ScyllaResult::Ok(ScyllaBinary(id.as_bytes().to_vec())),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -288,8 +308,8 @@ fn s_prepare<'a>(
             Ok(ps) => ScyllaResult::Ok(ResourceArc::new(PreparedStatementResource(ps))),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -301,16 +321,21 @@ fn s_query<'a>(
     values: Vec<Term<'a>>,
 ) -> NifResult<Atom> {
     let cql_values = decode_values(values)?;
-    async_elixir!(env, opaque, {
-        let session: &Session = &session.0;
-        session.query_unpaged(query, cql_values).await
-    }, |env, res| {
-        match res {
-            Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
-            Err(e) => ScyllaResult::Err(e.ex()),
+    async_elixir!(
+        env,
+        opaque,
+        {
+            let session: &Session = &session.0;
+            session.query_unpaged(query, cql_values).await
+        },
+        |env, res| {
+            match res {
+                Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
+                Err(e) => ScyllaResult::Err(e.ex()),
+            }
         }
-    });
-    Ok(atom::ok())
+    )
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -323,23 +348,33 @@ fn s_query_paged<'a>(
     paging_state: Option<ScyllaPageState>,
 ) -> NifResult<Atom> {
     let cql_values = decode_values(values)?;
-    let paging_state = paging_state.map(|s| s.0).unwrap_or(scylla::response::PagingState::start());
-    async_elixir!(env, opaque, {
-        let session: &Session = &session.0;
-        session.query_single_page(query, cql_values, paging_state).await
-    }, |env, res| {
-        match res {
-            Ok((qr, psr)) => {
-                let mut scylla_qr = ScyllaQueryResult::new(env, qr);
-                if let PagingStateResponse::HasMorePages { state } = psr {
-                    scylla_qr.paging_state = state.as_bytes_slice().map(|arc| ScyllaBinary(arc.to_vec()));
+    let paging_state = paging_state
+        .map(|s| s.0)
+        .unwrap_or(scylla::response::PagingState::start());
+    async_elixir!(
+        env,
+        opaque,
+        {
+            let session: &Session = &session.0;
+            session
+                .query_single_page(query, cql_values, paging_state)
+                .await
+        },
+        |env, res| {
+            match res {
+                Ok((qr, psr)) => {
+                    let mut scylla_qr = ScyllaQueryResult::new(env, qr);
+                    if let PagingStateResponse::HasMorePages { state } = psr {
+                        scylla_qr.paging_state =
+                            state.as_bytes_slice().map(|arc| ScyllaBinary(arc.to_vec()));
+                    }
+                    ScyllaResult::Ok(scylla_qr)
                 }
-                ScyllaResult::Ok(scylla_qr)
-            },
-            Err(e) => ScyllaResult::Err(e.ex()),
+                Err(e) => ScyllaResult::Err(e.ex()),
+            }
         }
-    });
-    Ok(atom::ok())
+    )
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -355,8 +390,8 @@ fn s_refresh_metadata<'a>(
             Ok(_) => ScyllaResult::Unwrapped(atom::ok()),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }
 
 #[rustler::nif]
@@ -374,6 +409,6 @@ fn s_use_keyspace<'a>(
             Ok(_) => ScyllaResult::Unwrapped(atom::ok()),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
-    });
-    Ok(atom::ok())
+    })
+    .map(|_| atom::ok())
 }

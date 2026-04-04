@@ -9,6 +9,7 @@ use super::{
 };
 
 pub struct ExecutionProfileResource(pub ExecutionProfile);
+impl std::panic::RefUnwindSafe for ExecutionProfileResource {}
 
 #[rustler::nif]
 pub fn ep_builder() -> ResourceArc<ExecutionProfileBuilderResource> {
@@ -22,9 +23,7 @@ pub fn ep_into_handle(
     ep: ResourceArc<ExecutionProfileResource>,
 ) -> ResourceArc<ExecutionProfileHandleResource> {
     let profile: ExecutionProfile = ep.0.clone();
-    ResourceArc::new(ExecutionProfileHandleResource(
-        profile.into_handle()
-    ))
+    ResourceArc::new(ExecutionProfileHandleResource(profile.into_handle()))
 }
 
 #[rustler::nif]
@@ -34,7 +33,7 @@ pub fn ep_into_handle_with_label(
 ) -> ResourceArc<ExecutionProfileHandleResource> {
     let profile: ExecutionProfile = ep.0.clone();
     ResourceArc::new(ExecutionProfileHandleResource(
-        profile.into_handle_with_label(label)
+        profile.into_handle_with_label(label),
     ))
 }
 

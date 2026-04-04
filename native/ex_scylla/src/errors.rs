@@ -1,9 +1,12 @@
 use crate::utils::*;
 use rustler::types::Atom;
 use rustler::{NifTaggedEnum, NifTuple};
-pub use scylla::errors::{BadKeyspaceName, BadQuery, DbError, NewSessionError, ExecutionError as QueryError, TranslationError, RequestAttemptError};
-pub use scylla::statement::prepared::PartitionKeyError;
+pub use scylla::errors::{
+    BadKeyspaceName, BadQuery, DbError, ExecutionError as QueryError, NewSessionError,
+    RequestAttemptError, TranslationError,
+};
 pub use scylla::serialize::SerializationError as SerializeValuesError;
+pub use scylla::statement::prepared::PartitionKeyError;
 
 rustler::atoms! {
     parse_value,
@@ -26,11 +29,11 @@ pub enum ScyllaQueryError {
 
 to_elixir!(QueryError, ScyllaQueryError, |qe: QueryError| {
     match qe {
-        QueryError::LastAttemptError(rae) => {
-            match rae {
-                RequestAttemptError::DbError(dbe, msg) => ScyllaQueryError::DbError(dbe.ex_with_msg(msg)),
-                _ => ScyllaQueryError::IoError(rae.to_string()),
+        QueryError::LastAttemptError(rae) => match rae {
+            RequestAttemptError::DbError(dbe, msg) => {
+                ScyllaQueryError::DbError(dbe.ex_with_msg(msg))
             }
+            _ => ScyllaQueryError::IoError(rae.to_string()),
         },
         QueryError::BadQuery(bq) => ScyllaQueryError::BadQuery(bq.ex()),
         _ => ScyllaQueryError::IoError(qe.to_string()),
@@ -132,7 +135,9 @@ pub enum ScyllaBadQuery {
 to_elixir!(BadQuery, ScyllaBadQuery, |bq: BadQuery| {
     let msg = bq.to_string();
     match bq {
-        BadQuery::SerializationError(e) => ScyllaBadQuery::SerializeValuesError(ScyllaSerializeValuesError::ParseError(e.to_string())),
+        BadQuery::SerializationError(e) => ScyllaBadQuery::SerializeValuesError(
+            ScyllaSerializeValuesError::ParseError(e.to_string()),
+        ),
         BadQuery::ValuesTooLongForKey(_, _) => ScyllaBadQuery::ValuesTooLongForKey(msg),
         _ => ScyllaBadQuery::Other(msg),
     }
@@ -149,9 +154,7 @@ pub enum ScyllaSerializeValuesError {
 to_elixir!(
     SerializeValuesError,
     ScyllaSerializeValuesError,
-    |sve: SerializeValuesError| {
-        ScyllaSerializeValuesError::ParseError(sve.to_string())
-    }
+    |sve: SerializeValuesError| { ScyllaSerializeValuesError::ParseError(sve.to_string()) }
 );
 
 #[derive(NifTaggedEnum, Debug)]
@@ -169,17 +172,21 @@ pub enum ScyllaNewSessionError {
     RequestTimeout(String),
     TranslationError(ScyllaTranslationError),
 }
-to_elixir!(NewSessionError, ScyllaNewSessionError, |nse: NewSessionError| {
-    match nse {
-        NewSessionError::FailedToResolveAnyHostname(_) => {
-            ScyllaNewSessionError::FailedToResolveAnyHostname(nse.to_string())
+to_elixir!(
+    NewSessionError,
+    ScyllaNewSessionError,
+    |nse: NewSessionError| {
+        match nse {
+            NewSessionError::FailedToResolveAnyHostname(_) => {
+                ScyllaNewSessionError::FailedToResolveAnyHostname(nse.to_string())
+            }
+            NewSessionError::EmptyKnownNodesList => {
+                ScyllaNewSessionError::EmptyKnownNodesList(nse.to_string())
+            }
+            _ => ScyllaNewSessionError::IoError(nse.to_string()),
         }
-        NewSessionError::EmptyKnownNodesList => {
-            ScyllaNewSessionError::EmptyKnownNodesList(nse.to_string())
-        }
-        _ => ScyllaNewSessionError::IoError(nse.to_string()),
     }
-});
+);
 #[derive(NifTaggedEnum, Debug)]
 pub enum ScyllaBadKeyspaceName {
     Empty(String),

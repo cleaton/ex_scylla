@@ -1,18 +1,14 @@
 mod batch;
 pub mod consts;
 pub mod errors;
+mod execution;
 mod prepared_statement;
 mod query;
 pub mod runtime;
 mod session;
 mod session_builder;
-mod execution;
 pub mod types;
-    pub mod utils;
-    use execution::execution_profile;
-use execution::execution_profile_builder;
-use execution::execution_profile_handle;
-use execution::load_balancing;
+pub mod utils;
 
 // Setup
 rustler::init!(
@@ -50,6 +46,7 @@ rustler::init!(
         session_builder::sb_tracing_info_fetch_interval,
         session_builder::sb_user,
         session_builder::sb_write_coalescing,
+        session_builder::sb_use_keyspace,
         // SessionConfig
         /*
         address_translator
@@ -182,39 +179,39 @@ rustler::init!(
         prepared_statement::ps_set_timestamp,
         prepared_statement::ps_set_tracing,
         // ExecutionProfile
-        execution_profile::ep_builder,
-        execution_profile::ep_into_handle_with_label,
-        execution_profile::ep_into_handle,
-        execution_profile::ep_to_builder,
+        execution::execution_profile::ep_builder,
+        execution::execution_profile::ep_into_handle_with_label,
+        execution::execution_profile::ep_into_handle,
+        execution::execution_profile::ep_to_builder,
         // ExecutionProfileBuilder
-        execution_profile_builder::epb_build,
-        execution_profile_builder::epb_consistency,
-        execution_profile_builder::epb_load_balancing_policy,
-        execution_profile_builder::epb_request_timeout,
-        execution_profile_builder::epb_retry_policy,
-        execution_profile_builder::epb_serial_consistency,
-        execution_profile_builder::epb_speculative_execution_policy,
+        execution::execution_profile_builder::epb_build,
+        execution::execution_profile_builder::epb_consistency,
+        execution::execution_profile_builder::epb_load_balancing_policy,
+        execution::execution_profile_builder::epb_request_timeout,
+        execution::execution_profile_builder::epb_retry_policy,
+        execution::execution_profile_builder::epb_serial_consistency,
+        execution::execution_profile_builder::epb_speculative_execution_policy,
         // ExecutionProfileHandle
-        execution_profile_handle::eph_map_to_another_profile,
-        execution_profile_handle::eph_pointee_to_builder,
+        execution::execution_profile_handle::eph_map_to_another_profile,
+        execution::execution_profile_handle::eph_pointee_to_builder,
         // DefaultPolicy
-        load_balancing::dp_default,
+        execution::load_balancing::dp_default,
         // DefaultPolicyBuilder
-        load_balancing::dpb_build,
-        load_balancing::dpb_enable_shuffling_replicas,
-        load_balancing::dpb_latency_awareness,
-        load_balancing::dpb_new,
-        load_balancing::dpb_permit_dc_failover,
-        load_balancing::dpb_prefer_datacenter,
-        load_balancing::dpb_prefer_datacenter_and_rack,
-        load_balancing::dpb_token_aware,
+        execution::load_balancing::dpb_build,
+        execution::load_balancing::dpb_enable_shuffling_replicas,
+        execution::load_balancing::dpb_latency_awareness,
+        execution::load_balancing::dpb_new,
+        execution::load_balancing::dpb_permit_dc_failover,
+        execution::load_balancing::dpb_prefer_datacenter,
+        execution::load_balancing::dpb_prefer_datacenter_and_rack,
+        execution::load_balancing::dpb_token_aware,
         // LatencyAwarenessBuilder
-        load_balancing::lab_exclusion_threshold,
-        load_balancing::lab_minimum_measurements,
-        load_balancing::lab_new,
-        load_balancing::lab_retry_period,
-        load_balancing::lab_scale,
-        load_balancing::lab_update_rate,
+        execution::load_balancing::lab_exclusion_threshold,
+        execution::load_balancing::lab_minimum_measurements,
+        execution::load_balancing::lab_new,
+        execution::load_balancing::lab_retry_period,
+        execution::load_balancing::lab_scale,
+        execution::load_balancing::lab_update_rate,
     ],
     load = load
 );
@@ -222,26 +219,26 @@ rustler::init!(
 #[allow(non_local_definitions)]
 fn load(env: rustler::Env, _: rustler::Term) -> bool {
     runtime::init();
-    rustler::resource!(session_builder::types::SessionBuilderResource, env);
-    rustler::resource!(session::types::SessionResource, env);
-    rustler::resource!(session::types::ScyllaRawRowsResource, env);
-    rustler::resource!(batch::types::BatchResource, env);
-    rustler::resource!(prepared_statement::types::PreparedStatementResource, env);
-    rustler::resource!(query::types::QueryResource, env);
-    rustler::resource!(
+    let _ = rustler::resource!(session_builder::types::SessionBuilderResource, env);
+    let _ = rustler::resource!(session::types::SessionResource, env);
+    let _ = rustler::resource!(session::types::ScyllaRawRowsResource, env);
+    let _ = rustler::resource!(batch::types::BatchResource, env);
+    let _ = rustler::resource!(prepared_statement::types::PreparedStatementResource, env);
+    let _ = rustler::resource!(query::types::QueryResource, env);
+    let _ = rustler::resource!(
         execution::execution_profile_builder::ExecutionProfileBuilderResource,
         env
     );
-    rustler::resource!(
+    let _ = rustler::resource!(
         execution::execution_profile_handle::ExecutionProfileHandleResource,
         env
     );
-    rustler::resource!(execution::execution_profile::ExecutionProfileResource, env);
-    rustler::resource!(execution::load_balancing::DefaultPolicyBuilderResource, env);
-    rustler::resource!(
+    let _ = rustler::resource!(execution::execution_profile::ExecutionProfileResource, env);
+    let _ = rustler::resource!(execution::load_balancing::DefaultPolicyBuilderResource, env);
+    let _ = rustler::resource!(
         execution::load_balancing::LatencyAwarenessPolicyBuilderResource,
         env
     );
-    rustler::resource!(execution::load_balancing::LoadBalancingPolicyResource, env);
+    let _ = rustler::resource!(execution::load_balancing::LoadBalancingPolicyResource, env);
     true
 }

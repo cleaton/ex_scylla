@@ -13,8 +13,8 @@ use crate::execution::execution_profile_handle::ExecutionProfileHandleResource;
 use crate::session::types::*;
 use crate::types::*;
 use crate::utils::*;
-use types::*;
 use scylla::value::CqlValue;
+use types::*;
 
 #[rustler::nif]
 fn ps_compute_partition_key<'a>(
@@ -63,7 +63,7 @@ fn ps_set_request_timeout(
     timeout_ms: Option<u64>,
 ) -> ResourceArc<PreparedStatementResource> {
     let mut ps: PreparedStatement = ps.0.to_owned();
-    ps.set_request_timeout(timeout_ms.map(|ms| Duration::from_millis(ms)));
+    ps.set_request_timeout(timeout_ms.map(Duration::from_millis));
     ps.ex()
 }
 

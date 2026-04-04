@@ -1,5 +1,14 @@
 defmodule ExScylla.Types.TracingInfo do
-  defstruct [:client, :command, :coordinator, :duration, :parameters, :request, :started_at, :events]
+  defstruct [
+    :client,
+    :command,
+    :coordinator,
+    :duration,
+    :parameters,
+    :request,
+    :started_at,
+    :events
+  ]
 
   @type t :: %__MODULE__{
           client: :inet.ip_address() | nil,

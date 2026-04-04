@@ -1,4 +1,3 @@
-
 use crate::types::*;
 use rustler::ResourceArc;
 use scylla::client::execution_profile::ExecutionProfileBuilder;
@@ -7,10 +6,10 @@ use std::ops::Deref;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use super::speculative_execution::ScyllaSpeculativeExecutionPolicy;
 use super::execution_profile::ExecutionProfileResource;
 use super::load_balancing::LoadBalancingPolicyResource;
 use super::retry_policy::ScyllaRetryPolicy;
+use super::speculative_execution::ScyllaSpeculativeExecutionPolicy;
 
 pub struct ExecutionProfileBuilderResource(pub Mutex<ExecutionProfileBuilder>);
 
@@ -24,7 +23,7 @@ impl Deref for ExecutionProfileBuilderResource {
 macro_rules! use_builder {
     ($epbr:ident, $e:expr) => {
         let mut guard = $epbr.lock().unwrap();
-        let builder = std::mem::replace(&mut *guard, ExecutionProfileBuilder::default());
+        let builder = std::mem::take(&mut *guard);
         *guard = $e(builder);
         drop(guard);
     };
@@ -68,7 +67,7 @@ fn epb_request_timeout(
     timeout_ms: Option<u64>,
 ) -> ResourceArc<ExecutionProfileBuilderResource> {
     use_builder!(epbr, |epb: ExecutionProfileBuilder| {
-        epb.request_timeout(timeout_ms.map(|ms| Duration::from_millis(ms)))
+        epb.request_timeout(timeout_ms.map(Duration::from_millis))
     });
     epbr
 }

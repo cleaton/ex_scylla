@@ -8,11 +8,11 @@ pub enum ScyllaRetryPolicy {
     FallthroughRetryPolicy,
 }
 
-impl Into<Arc<dyn RetryPolicy>> for ScyllaRetryPolicy {
-    fn into(self) -> Arc<dyn RetryPolicy> {
-        match self {
-            Self::DefaultRetryPolicy => Arc::new(DefaultRetryPolicy::default()),
-            Self::FallthroughRetryPolicy => Arc::new(FallthroughRetryPolicy::default()),
+impl From<ScyllaRetryPolicy> for Arc<dyn RetryPolicy> {
+    fn from(val: ScyllaRetryPolicy) -> Self {
+        match val {
+            ScyllaRetryPolicy::DefaultRetryPolicy => Arc::new(DefaultRetryPolicy),
+            ScyllaRetryPolicy::FallthroughRetryPolicy => Arc::new(FallthroughRetryPolicy),
         }
     }
 }

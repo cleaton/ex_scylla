@@ -48,7 +48,9 @@ defmodule ExScylla.CQLTypes do
   def decode_value(bin, :blob), do: bin
 
   def decode_value(bin, :uuid) do
-    <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2), u5::binary-size(6)>> = bin
+    <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2),
+      u5::binary-size(6)>> = bin
+
     "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
   end
 
@@ -59,6 +61,7 @@ defmodule ExScylla.CQLTypes do
       4 ->
         <<a, b, c, d>> = bin
         {a, b, c, d}
+
       16 ->
         <<a::16, b::16, c::16, d::16, e::16, f::16, g::16, h::16>> = bin
         {a, b, c, d, e, f, g, h}
@@ -92,11 +95,13 @@ defmodule ExScylla.CQLTypes do
   def decode_value(bin, :decimal) do
     <<scale::signed-size(32), unscaled_bin::binary>> = bin
     unscaled = decode_varint(unscaled_bin)
-    
+
     # Simple string formatting for the test
     str = Integer.to_string(unscaled)
+
     if scale > 0 do
       len = byte_size(str)
+
       if len > scale do
         {int_part, frac_part} = String.split_at(str, len - scale)
         "#{int_part}.#{frac_part}"
@@ -141,10 +146,12 @@ defmodule ExScylla.CQLTypes do
   end
 
   defp decode_collection(_bin, 0, _type, acc), do: Enum.reverse(acc)
+
   defp decode_collection(<<len::signed-size(32), rest::binary>>, count, type, acc) do
     case len do
       -1 ->
         decode_collection(rest, count - 1, type, [nil | acc])
+
       _ ->
         <<val_bin::binary-size(len), remaining::binary>> = rest
         val = decode_value(val_bin, type)
@@ -153,49 +160,62 @@ defmodule ExScylla.CQLTypes do
   end
 
   defp decode_map(_bin, 0, _ktype, _vtype, acc), do: Map.new(acc)
+
   defp decode_map(<<klen::signed-size(32), rest1::binary>>, count, ktype, vtype, acc) do
-    {k_val, rest2} = case klen do
-      -1 -> {nil, rest1}
-      _ ->
-        <<k_bin::binary-size(klen), rem1::binary>> = rest1
-        {decode_value(k_bin, ktype), rem1}
-    end
+    {k_val, rest2} =
+      case klen do
+        -1 ->
+          {nil, rest1}
+
+        _ ->
+          <<k_bin::binary-size(klen), rem1::binary>> = rest1
+          {decode_value(k_bin, ktype), rem1}
+      end
 
     <<vlen::signed-size(32), rest3::binary>> = rest2
-    {v_val, rest4} = case vlen do
-      -1 -> {nil, rest3}
-      _ ->
-        <<v_bin::binary-size(vlen), rem2::binary>> = rest3
-        {decode_value(v_bin, vtype), rem2}
-    end
+
+    {v_val, rest4} =
+      case vlen do
+        -1 ->
+          {nil, rest3}
+
+        _ ->
+          <<v_bin::binary-size(vlen), rem2::binary>> = rest3
+          {decode_value(v_bin, vtype), rem2}
+      end
 
     decode_map(rest4, count - 1, ktype, vtype, [{k_val, v_val} | acc])
   end
 
   defp decode_tuple(_bin, [], acc), do: Enum.reverse(acc) |> List.to_tuple()
+
   defp decode_tuple(<<len::signed-size(32), rest::binary>>, [type | types], acc) do
     case len do
       -1 ->
         decode_tuple(rest, types, [nil | acc])
+
       _ ->
         <<val_bin::binary-size(len), remaining::binary>> = rest
         val = decode_value(val_bin, type)
         decode_tuple(remaining, types, [val | acc])
     end
   end
+
   defp decode_tuple(<<>>, _types, acc), do: Enum.reverse(acc) |> List.to_tuple()
 
   defp decode_udt(_bin, [], acc), do: acc
+
   defp decode_udt(<<len::signed-size(32), rest::binary>>, [{name, type} | fields], acc) do
     case len do
       -1 ->
         decode_udt(rest, fields, Map.put(acc, name, nil))
+
       _ ->
         <<val_bin::binary-size(len), remaining::binary>> = rest
         val = decode_value(val_bin, type)
         decode_udt(remaining, fields, Map.put(acc, name, val))
     end
   end
-  defp decode_udt(<<>>, _fields, acc), do: acc
 
+  defp decode_udt(<<>>, _fields, acc), do: acc
 end

@@ -58,24 +58,32 @@ impl<A: Encoder, B: Into<A>> ToElixir<Vec<A>> for Vec<B> {
 
 macro_rules! async_elixir {
     ($env:ident, $opaque:expr, $e:expr) => {
-        let pid = $env.pid();
-        let mut owned_env = OwnedEnv::new();
-        let opaque = owned_env
-            .run(|env| -> NifResult<SavedTerm> { Ok(owned_env.save($opaque.in_env(env))) })?;
-        runtime::rt().spawn(async move {
-            let res = $e;
-            owned_env.send_and_clear(&pid, |env| (opaque.load(env), res).encode(env));
-        });
+        (|| -> NifResult<()> {
+            let pid = $env.pid();
+            let mut owned_env = OwnedEnv::new();
+            let opaque = owned_env
+                .run(|env| -> NifResult<SavedTerm> { Ok(owned_env.save($opaque.in_env(env))) })?;
+            let _ = runtime::rt().spawn(async move {
+                let res = $e;
+                owned_env.send_and_clear(&pid, |env| (opaque.load(env), res).encode(env));
+            });
+            Ok(())
+        })()
     };
     ($env:ident, $opaque:expr, $e:expr, |$env_ident:ident, $res_ident:ident| $enc:expr) => {
-        let pid = $env.pid();
-        let mut owned_env = OwnedEnv::new();
-        let opaque = owned_env
-            .run(|env| -> NifResult<SavedTerm> { Ok(owned_env.save($opaque.in_env(env))) })?;
-        runtime::rt().spawn(async move {
-            let $res_ident = $e;
-            owned_env.send_and_clear(&pid, |$env_ident| (opaque.load($env_ident), $enc).encode($env_ident));
-        });
+        (|| -> NifResult<()> {
+            let pid = $env.pid();
+            let mut owned_env = OwnedEnv::new();
+            let opaque = owned_env
+                .run(|env| -> NifResult<SavedTerm> { Ok(owned_env.save($opaque.in_env(env))) })?;
+            let _ = runtime::rt().spawn(async move {
+                let $res_ident = $e;
+                owned_env.send_and_clear(&pid, |$env_ident| {
+                    (opaque.load($env_ident), $enc).encode($env_ident)
+                });
+            });
+            Ok(())
+        })()
     };
 }
 

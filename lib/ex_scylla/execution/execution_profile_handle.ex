@@ -1,10 +1,9 @@
 defmodule ExScylla.Execution.ExecutionProfileHandle do
   alias ExScylla.Types, as: T
 
-  use ExScylla.Macros.Native, [
-                          prefix: :eph,
-                          docs_rs_path: "/scylla/transport/execution_profile/struct.ExecutionProfileHandle.html"
-                        ]
+  use ExScylla.Macros.Native,
+    prefix: :eph,
+    docs_rs_path: "/scylla/transport/execution_profile/struct.ExecutionProfileHandle.html"
 
   native_f(
     func: :map_to_another_profile,

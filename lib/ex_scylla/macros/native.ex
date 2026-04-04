@@ -1,15 +1,15 @@
 defmodule ExScylla.Macros.Native do
   @scylla_version File.read!("#{File.cwd!()}/native/ex_scylla/Cargo.lock")
-  |> String.split("[[package]]")
-  |> Enum.find_value(nil, fn l ->
-    case l |> String.trim() |> String.split("\n") do
-      ["name = \"scylla\"", "version = " <> version | _] ->
-        String.trim(version, "\"")
+                  |> String.split("[[package]]")
+                  |> Enum.find_value(nil, fn l ->
+                    case l |> String.trim() |> String.split("\n") do
+                      ["name = \"scylla\"", "version = " <> version | _] ->
+                        String.trim(version, "\"")
 
-      _ ->
-        false
-    end
-  end)
+                      _ ->
+                        false
+                    end
+                  end)
 
   def scylla_version(), do: @scylla_version
   @r ~r"> \s*(?<res>.*)\s*=\s*.*\.(?<func>.*)\(.*"
@@ -68,10 +68,11 @@ defmodule ExScylla.Macros.Native do
     return_spec = Keyword.fetch!(macro_args, :return_spec)
     doc_example = Keyword.get(macro_args, :doc_example, "")
 
-    example_setup = if Keyword.get(macro_args, :example_setup) do
-      Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup))
-      |> String.trim_trailing("\n")
-    end
+    example_setup =
+      if Keyword.get(macro_args, :example_setup) do
+        Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup))
+        |> String.trim_trailing("\n")
+      end
 
     prefix = Module.get_attribute(__CALLER__.module, :prefix)
     docs_rs_url = Module.get_attribute(__CALLER__.module, :docs_rs_url)
@@ -126,9 +127,13 @@ defmodule ExScylla.Macros.Native do
       end
 
     doc_example = Keyword.get(macro_args, :doc_example, "")
-    example_setup = if Keyword.get(macro_args, :example_setup) do
-      Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup)) |> String.trim_trailing("\n")
-    end
+
+    example_setup =
+      if Keyword.get(macro_args, :example_setup) do
+        Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup))
+        |> String.trim_trailing("\n")
+      end
+
     prefix = Module.get_attribute(__CALLER__.module, :prefix)
     docs_rs_url = Module.get_attribute(__CALLER__.module, :docs_rs_url)
 
@@ -175,11 +180,13 @@ defmodule ExScylla.Macros.Native do
       def unquote(:"#{as_name}")(unquote_splicing(args), timeout_ms \\ 5_000) do
         case unquote(:"async_#{as_name}")(unquote_splicing(args)) do
           {:ok, opaque} ->
-            var!(result) = receive do
-              {^opaque, r} -> r
-            after
-              timeout_ms -> {:error, :timeout}
-            end
+            var!(result) =
+              receive do
+                {^opaque, r} -> r
+              after
+                timeout_ms -> {:error, :timeout}
+              end
+
             unquote(post_process)
 
           err ->

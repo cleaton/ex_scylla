@@ -1,8 +1,5 @@
 use rustler::{NifStruct, ResourceArc};
-use scylla::{
-    frame::response::result::PartitionKeyIndex,
-    statement::prepared::PreparedStatement,
-};
+use scylla::{frame::response::result::PartitionKeyIndex, statement::prepared::PreparedStatement};
 
 use crate::{
     session::types::*,
@@ -10,6 +7,7 @@ use crate::{
 };
 
 pub struct PreparedStatementResource(pub PreparedStatement);
+impl std::panic::RefUnwindSafe for PreparedStatementResource {}
 
 to_elixir!(
     PreparedStatement,
@@ -29,17 +27,11 @@ impl From<&PreparedStatement> for ScyllaPreparedMetadata {
     fn from(ps: &PreparedStatement) -> Self {
         let col_specs = ps.get_variable_col_specs();
         let pk_indexes = ps.get_variable_pk_indexes();
-        
+
         ScyllaPreparedMetadata {
             col_count: col_specs.iter().count(),
-            pk_indexes: pk_indexes
-                .iter()
-                .map(|pki| (*pki).into())
-                .collect(),
-            col_specs: col_specs
-                .iter()
-                .map(|cs| cs.clone().ex())
-                .collect(),
+            pk_indexes: pk_indexes.iter().map(|pki| (*pki).into()).collect(),
+            col_specs: col_specs.iter().map(|cs| cs.clone().ex()).collect(),
         }
     }
 }

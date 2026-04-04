@@ -52,18 +52,23 @@ defmodule ExScylla.MixProject do
     case args do
       [bench_name] ->
         filename = "bench/#{bench_name}.exs"
+
         if File.exists?(filename) do
           Mix.shell().info("Running benchmark: #{filename}")
-          {_, res} = System.cmd("mix", ["run", filename],
-            into: IO.binstream(:stdio, :line),
-            env: [{"MIX_ENV", "bench"}]
-          )
+
+          {_, res} =
+            System.cmd("mix", ["run", filename],
+              into: IO.binstream(:stdio, :line),
+              env: [{"MIX_ENV", "bench"}]
+            )
+
           if res > 0 do
             System.at_exit(fn _ -> exit({:shutdown, 1}) end)
           end
         else
           Mix.shell().error("Benchmark file not found: #{filename}")
         end
+
       _ ->
         Mix.shell().error("Usage: mix bench <benchmark_name>")
     end

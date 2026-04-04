@@ -13,28 +13,35 @@ defmodule ExScylla.TestSupport do
       |> Testcontainers.Container.with_exposed_port(9042)
       |> Testcontainers.Container.with_cmd([
         "--disable-version-check",
-        "--skip-wait-for-gossip-to-settle", "1",
-        "--smp", "1",
-        "--developer-mode", "1"
+        "--skip-wait-for-gossip-to-settle",
+        "1",
+        "--smp",
+        "1",
+        "--developer-mode",
+        "1"
       ])
       |> Testcontainers.Container.with_waiting_strategy(
         Testcontainers.CommandWaitStrategy.new(
           ["cqlsh", "-e", "SHOW VERSION"],
-          120_000,  # timeout in milliseconds
-          100      # check interval in milliseconds
+          # timeout in milliseconds
+          120_000,
+          # check interval in milliseconds
+          100
         )
       )
 
     {:ok, container} = Testcontainers.start_container(container_config)
-    host = Testcontainers.get_host() |> String.replace("localhost", "127.0.0.1") # ipv6 issues.
+    # ipv6 issues.
+    host = Testcontainers.get_host() |> String.replace("localhost", "127.0.0.1")
     port = Testcontainers.Container.mapped_port(container, 9042)
     node = "#{host}:#{port}"
 
     IO.puts("ScyllaDB node: #{node}")
 
-    {:ok, session} = SessionBuilder.new()
-                    |> SessionBuilder.known_node(node)
-                    |> SessionBuilder.build()
+    {:ok, session} =
+      SessionBuilder.new()
+      |> SessionBuilder.known_node(node)
+      |> SessionBuilder.build()
 
     {container, node, session}
   end
@@ -52,6 +59,7 @@ defmodule ExScylla.TestSupport do
         'replication_factor' : #{replication_factor}
       };
     """
+
     {:ok, _} = Session.query(session, ks, [])
     :ok
   end

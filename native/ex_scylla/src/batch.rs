@@ -20,13 +20,19 @@ fn b_append_statement(
 }
 
 #[rustler::nif]
-fn b_get_execution_profile_handle(qr: ResourceArc<BatchResource>) -> Option<ResourceArc<ExecutionProfileHandleResource>> {
+fn b_get_execution_profile_handle(
+    qr: ResourceArc<BatchResource>,
+) -> Option<ResourceArc<ExecutionProfileHandleResource>> {
     let b: &Batch = &qr.0;
-    b.get_execution_profile_handle().map(|h| ResourceArc::new(ExecutionProfileHandleResource(h.clone())))
+    b.get_execution_profile_handle()
+        .map(|h| ResourceArc::new(ExecutionProfileHandleResource(h.clone())))
 }
 
 #[rustler::nif]
-fn b_set_execution_profile_handle(q: ResourceArc<BatchResource>, profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>) -> ResourceArc<BatchResource> {
+fn b_set_execution_profile_handle(
+    q: ResourceArc<BatchResource>,
+    profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>,
+) -> ResourceArc<BatchResource> {
     let mut b: Batch = q.0.to_owned();
     b.set_execution_profile_handle(profile_handle.map(|ephr| ephr.0.clone()));
     ResourceArc::new(BatchResource(b))

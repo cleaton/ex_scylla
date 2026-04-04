@@ -1,19 +1,19 @@
+use crate::errors::ScyllaError;
 use crate::prepared_statement::types::PreparedStatementResource;
 use crate::query::types::QueryResource;
 use crate::utils::*;
+use bigdecimal::BigDecimal;
+use num_bigint::BigInt;
 use rustler::{
-    Binary, Decoder, Encoder, Env, Error, NewBinary, NifResult, NifStruct, NifTaggedEnum,
-    NifUntaggedEnum, NifTuple, ResourceArc, Term,
+    Binary, Decoder, Encoder, Env, NewBinary, NifResult, NifStruct, NifTaggedEnum, NifTuple,
+    NifUntaggedEnum, ResourceArc, Term,
 };
 use scylla::client::session::Session;
 use scylla::response::query_result::QueryResult;
 use scylla::statement::unprepared::Statement as Query;
-use scylla::value::{CqlValue, CqlDuration, Counter};
-use bigdecimal::BigDecimal;
-use num_bigint::BigInt;
+use scylla::value::{Counter, CqlDuration, CqlValue};
+use scylla_cql::frame::response::result::{CollectionType, ColumnSpec, ColumnType, NativeType};
 use std::str::FromStr;
-use scylla_cql::frame::response::result::{ColumnType, ColumnSpec, NativeType, CollectionType};
-use crate::errors::ScyllaError;
 
 #[derive(NifStruct, Debug)]
 #[module = "ExScylla.Types.Metrics"]
@@ -145,6 +145,7 @@ impl From<&scylla::cluster::ClusterState> for ScyllaClusterState {
 }
 
 pub struct SessionResource(pub Session);
+impl std::panic::RefUnwindSafe for SessionResource {}
 
 pub struct ScyllaRawRowsResource(pub bytes::Bytes);
 
@@ -184,11 +185,11 @@ pub enum ScyllaQuery {
     QueryResource(ResourceArc<QueryResource>),
 }
 
-impl Into<Query> for ScyllaQuery {
-    fn into(self) -> Query {
-        match self {
-            Self::String(q) => q.into(),
-            Self::QueryResource(q) => q.0.to_owned().into(),
+impl From<ScyllaQuery> for Query {
+    fn from(val: ScyllaQuery) -> Self {
+        match val {
+            ScyllaQuery::String(q) => q.into(),
+            ScyllaQuery::QueryResource(q) => q.0.to_owned(),
         }
     }
 }
@@ -196,8 +197,10 @@ impl Into<Query> for ScyllaQuery {
 impl<'a> ScyllaQueryResult<'a> {
     pub fn new(env: Env<'a>, qr: QueryResult) -> Self {
         let warnings = qr.warnings().map(|s| s.to_string()).collect();
-        let tracing_id = qr.tracing_id().map(|id| ScyllaBinary(id.as_bytes().to_vec()));
-        
+        let tracing_id = qr
+            .tracing_id()
+            .map(|id| ScyllaBinary(id.as_bytes().to_vec()));
+
         match qr.into_rows_result() {
             Ok(rows_res) => {
                 let column_types: Vec<ScyllaColumnType> = rows_res
@@ -220,18 +223,16 @@ impl<'a> ScyllaQueryResult<'a> {
                     paging_state: None,
                     serialized_size: 0,
                 }
-            },
-            Err(_) => {
-                ScyllaQueryResult {
-                    rows: None,
-                    rows_count: None,
-                    column_types: Vec::new(),
-                    warnings,
-                    tracing_id,
-                    paging_state: None,
-                    serialized_size: 0,
-                }
             }
+            Err(_) => ScyllaQueryResult {
+                rows: None,
+                rows_count: None,
+                column_types: Vec::new(),
+                warnings,
+                tracing_id,
+                paging_state: None,
+                serialized_size: 0,
+            },
         }
     }
 }
@@ -283,9 +284,9 @@ impl std::convert::TryFrom<CqlValue> for ScyllaValue {
             CqlValue::Date(date) => ScyllaValue::Date(date.0),
             CqlValue::Double(f64) => ScyllaValue::Double(f64),
             CqlValue::Duration(duration) => ScyllaValue::Duration(ScyllaCqlDuration {
-                 months: duration.months,
-                 days: duration.days,
-                 nanoseconds: duration.nanoseconds,
+                months: duration.months,
+                days: duration.days,
+                nanoseconds: duration.nanoseconds,
             }),
             CqlValue::Empty => ScyllaValue::Empty,
             CqlValue::Float(f32) => ScyllaValue::Float(f32),
@@ -294,11 +295,21 @@ impl std::convert::TryFrom<CqlValue> for ScyllaValue {
             CqlValue::Text(text) => ScyllaValue::Text(text),
             CqlValue::Timestamp(d) => ScyllaValue::Timestamp(d.0),
             CqlValue::Inet(ipaddr) => ScyllaValue::Inet(ipaddr.into()),
-            CqlValue::List(v) => ScyllaValue::List(v.into_iter().map(|cv| cv.try_into()).collect::<Result<Vec<_>, rustler::Error>>()?),
-            CqlValue::Map(v) => {
-                ScyllaValue::Map(v.into_iter().map(|(k, v)| Ok::<_, rustler::Error>((k.try_into()?, v.try_into()?))).collect::<Result<Vec<_>, rustler::Error>>()?)
-            }
-            CqlValue::Set(v) => ScyllaValue::Set(v.into_iter().map(|cv| cv.try_into()).collect::<Result<Vec<_>, rustler::Error>>()?),
+            CqlValue::List(v) => ScyllaValue::List(
+                v.into_iter()
+                    .map(|cv| cv.try_into())
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
+            ),
+            CqlValue::Map(v) => ScyllaValue::Map(
+                v.into_iter()
+                    .map(|(k, v)| Ok::<_, rustler::Error>((k.try_into()?, v.try_into()?)))
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
+            ),
+            CqlValue::Set(v) => ScyllaValue::Set(
+                v.into_iter()
+                    .map(|cv| cv.try_into())
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
+            ),
             CqlValue::UserDefinedType {
                 keyspace,
                 name,
@@ -309,22 +320,31 @@ impl std::convert::TryFrom<CqlValue> for ScyllaValue {
                 type_name: name,
                 fields: fields
                     .into_iter()
-                    .map(|(f, v)| Ok::<_, rustler::Error>((f, match v {
-                        Some(v) => Some(v.try_into()?),
-                        None => None,
-                    })))
+                    .map(|(f, v)| {
+                        Ok::<_, rustler::Error>((
+                            f,
+                            match v {
+                                Some(v) => Some(v.try_into()?),
+                                None => None,
+                            },
+                        ))
+                    })
                     .collect::<Result<Vec<_>, rustler::Error>>()?,
             }),
             CqlValue::SmallInt(i16) => ScyllaValue::SmallInt(i16),
             CqlValue::TinyInt(i8) => ScyllaValue::TinyInt(i8),
             CqlValue::Time(d) => ScyllaValue::Time(d.0 as u64),
-            CqlValue::Timeuuid(uuid) => ScyllaValue::Timeuuid(ScyllaBinary(uuid.as_bytes().to_vec())),
-            CqlValue::Tuple(t) => {
-                ScyllaValue::Tuple(t.into_iter().map(|v| match v {
-                    Some(val) => Ok::<_, rustler::Error>(Some(val.try_into()?)),
-                    None => Ok(None),
-                }).collect::<Result<Vec<_>, rustler::Error>>()?)
+            CqlValue::Timeuuid(uuid) => {
+                ScyllaValue::Timeuuid(ScyllaBinary(uuid.as_bytes().to_vec()))
             }
+            CqlValue::Tuple(t) => ScyllaValue::Tuple(
+                t.into_iter()
+                    .map(|v| match v {
+                        Some(val) => Ok::<_, rustler::Error>(Some(val.try_into()?)),
+                        None => Ok(None),
+                    })
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
+            ),
             CqlValue::Uuid(uuid) => ScyllaValue::Uuid(ScyllaBinary(uuid.as_bytes().to_vec())),
             CqlValue::Varint(varint) => {
                 let bi = BigInt::from_signed_bytes_be(&varint.into_signed_bytes_be());
@@ -335,21 +355,24 @@ impl std::convert::TryFrom<CqlValue> for ScyllaValue {
     }
 }
 
-impl Into<CqlValue> for ScyllaValue {
-    fn into(self) -> CqlValue {
-        match self {
+impl From<ScyllaValue> for CqlValue {
+    fn from(val: ScyllaValue) -> Self {
+        match val {
             ScyllaValue::Ascii(s) => CqlValue::Ascii(s),
             ScyllaValue::Boolean(b) => CqlValue::Boolean(b),
             ScyllaValue::Blob(b) => CqlValue::Blob(b.0),
             ScyllaValue::Counter(c) => CqlValue::Counter(Counter(c)),
-            ScyllaValue::Decimal(decimal) => {
-                BigDecimal::from_str(&decimal)
-                    .map(|bd| {
-                        let (bi, scale) = bd.into_bigint_and_exponent();
-                        CqlValue::Decimal(scylla::value::CqlDecimal::from_signed_be_bytes_and_exponent(bi.to_signed_bytes_be(), scale as i32))
-                    })
-                    .unwrap_or(CqlValue::Empty)
-            }
+            ScyllaValue::Decimal(decimal) => BigDecimal::from_str(&decimal)
+                .map(|bd| {
+                    let (bi, scale) = bd.into_bigint_and_exponent();
+                    CqlValue::Decimal(
+                        scylla::value::CqlDecimal::from_signed_be_bytes_and_exponent(
+                            bi.to_signed_bytes_be(),
+                            scale as i32,
+                        ),
+                    )
+                })
+                .unwrap_or(CqlValue::Empty),
             ScyllaValue::Date(u32) => CqlValue::Date(scylla::value::CqlDate(u32)),
             ScyllaValue::Double(f64) => CqlValue::Double(f64),
             ScyllaValue::Duration(cd) => CqlValue::Duration(CqlDuration {
@@ -365,7 +388,9 @@ impl Into<CqlValue> for ScyllaValue {
             ScyllaValue::Timestamp(i64) => CqlValue::Timestamp(scylla::value::CqlTimestamp(i64)),
             ScyllaValue::Inet(ipaddr) => {
                 let ip: std::net::IpAddr = match ipaddr {
-                    ScyllaIpAddr::IPv4(v4) => std::net::IpAddr::V4(std::net::Ipv4Addr::new(v4.0, v4.1, v4.2, v4.3)),
+                    ScyllaIpAddr::IPv4(v4) => {
+                        std::net::IpAddr::V4(std::net::Ipv4Addr::new(v4.0, v4.1, v4.2, v4.3))
+                    }
                     ScyllaIpAddr::IPv6(v6) => std::net::IpAddr::V6(std::net::Ipv6Addr::new(
                         v6.0, v6.1, v6.2, v6.3, v6.4, v6.5, v6.6, v6.7,
                     )),
@@ -421,11 +446,13 @@ impl Into<CqlValue> for ScyllaValue {
                     CqlValue::Empty
                 }
             }
-            ScyllaValue::Varint(varint) => {
-                BigInt::from_str(&varint)
-                    .map(|bi| CqlValue::Varint(scylla::value::CqlVarint::from_signed_bytes_be(bi.to_signed_bytes_be())))
-                    .unwrap_or(CqlValue::Empty)
-            }
+            ScyllaValue::Varint(varint) => BigInt::from_str(&varint)
+                .map(|bi| {
+                    CqlValue::Varint(scylla::value::CqlVarint::from_signed_bytes_be(
+                        bi.to_signed_bytes_be(),
+                    ))
+                })
+                .unwrap_or(CqlValue::Empty),
         }
     }
 }
@@ -494,7 +521,9 @@ impl<'a> Encoder for ScyllaPageState {
 impl<'a> Decoder<'a> for ScyllaPageState {
     fn decode(term: Term<'a>) -> NifResult<Self> {
         let c: Binary<'a> = term.decode()?;
-        Ok(ScyllaPageState(scylla::response::PagingState::new_from_raw_bytes(c.to_vec())))
+        Ok(ScyllaPageState(
+            scylla::response::PagingState::new_from_raw_bytes(c.to_vec()),
+        ))
     }
 }
 
@@ -673,9 +702,16 @@ impl From<ColumnType<'_>> for ScyllaColumnType {
                 _ => ScyllaColumnType::Custom(format!("{:?}", nt)),
             },
             ColumnType::Collection { typ, .. } => match typ {
-                CollectionType::List(inner) => ScyllaColumnType::List(Box::new(ScyllaColumnType::from(*inner))),
-                CollectionType::Set(inner) => ScyllaColumnType::Set(Box::new(ScyllaColumnType::from(*inner))),
-                CollectionType::Map(k, v) => ScyllaColumnType::Map((Box::new(ScyllaColumnType::from(*k)), Box::new(ScyllaColumnType::from(*v)))),
+                CollectionType::List(inner) => {
+                    ScyllaColumnType::List(Box::new(ScyllaColumnType::from(*inner)))
+                }
+                CollectionType::Set(inner) => {
+                    ScyllaColumnType::Set(Box::new(ScyllaColumnType::from(*inner)))
+                }
+                CollectionType::Map(k, v) => ScyllaColumnType::Map((
+                    Box::new(ScyllaColumnType::from(*k)),
+                    Box::new(ScyllaColumnType::from(*v)),
+                )),
                 _ => ScyllaColumnType::Custom(format!("{:?}", typ)),
             },
             ColumnType::UserDefinedType { definition, .. } => scylla_udt_from_def(&definition),
@@ -687,11 +723,14 @@ impl From<ColumnType<'_>> for ScyllaColumnType {
     }
 }
 
-fn scylla_udt_from_def(definition: &scylla_cql::frame::response::result::UserDefinedType) -> ScyllaColumnType {
+fn scylla_udt_from_def(
+    definition: &scylla_cql::frame::response::result::UserDefinedType,
+) -> ScyllaColumnType {
     ScyllaColumnType::UserDefinedType(ScyllaUserDefinedColumnType {
         type_name: definition.name.to_string(),
         keyspace: definition.keyspace.to_string(),
-        field_types: definition.field_types
+        field_types: definition
+            .field_types
             .iter()
             .map(|(str, ct)| (str.to_string(), ct.clone().into()))
             .collect(),
@@ -711,20 +750,8 @@ impl ToElixir<ScyllaColumnSpec> for ColumnSpec<'_> {
     }
 }
 
-impl Encoder for Box<ScyllaColumnType> {
-    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
-        (**self).encode(env)
-    }
-}
-
-impl<'a> Decoder<'a> for Box<ScyllaColumnType> {
-    fn decode(_term: Term<'a>) -> NifResult<Self> {
-        Err(Error::Atom("not_implemented"))
-    }
-}
-
-use scylla_cql::serialize::writers::{WrittenCellProof, CellWriter};
 use scylla_cql::serialize::value::SerializeValue;
+use scylla_cql::serialize::writers::{CellWriter, WrittenCellProof};
 use scylla_cql::serialize::SerializationError;
 
 pub struct ScyllaTerm<'a>(pub Term<'a>);
@@ -739,28 +766,44 @@ impl<'a> SerializeValue for ScyllaTerm<'a> {
         match typ {
             ColumnType::Native(nt) => match nt {
                 NativeType::Ascii | NativeType::Text => {
-                    let s: String = term.decode().map_err(|_| SerializationError::new(ScyllaError::parse("Expected string")))?;
+                    let s: String = term.decode().map_err(|_| {
+                        SerializationError::new(ScyllaError::parse("Expected string"))
+                    })?;
                     s.serialize(typ, writer)
                 }
                 NativeType::Int => {
-                    let i: i32 = term.decode().map_err(|_| SerializationError::new(ScyllaError::parse("Expected i32")))?;
+                    let i: i32 = term
+                        .decode()
+                        .map_err(|_| SerializationError::new(ScyllaError::parse("Expected i32")))?;
                     i.serialize(typ, writer)
                 }
                 NativeType::BigInt => {
-                    let i: i64 = term.decode().map_err(|_| SerializationError::new(ScyllaError::parse("Expected i64")))?;
+                    let i: i64 = term
+                        .decode()
+                        .map_err(|_| SerializationError::new(ScyllaError::parse("Expected i64")))?;
                     i.serialize(typ, writer)
                 }
                 NativeType::Boolean => {
-                    let b: bool = term.decode().map_err(|_| SerializationError::new(ScyllaError::parse("Expected boolean")))?;
+                    let b: bool = term.decode().map_err(|_| {
+                        SerializationError::new(ScyllaError::parse("Expected boolean"))
+                    })?;
                     b.serialize(typ, writer)
                 }
                 NativeType::Blob => {
-                    let b: Binary = term.decode().map_err(|_| SerializationError::new(ScyllaError::parse("Expected binary")))?;
+                    let b: Binary = term.decode().map_err(|_| {
+                        SerializationError::new(ScyllaError::parse("Expected binary"))
+                    })?;
                     b.as_slice().serialize(typ, writer)
                 }
-                _ => Err(SerializationError::new(ScyllaError::parse(&format!("Unsupported native type for lazy serialization: {:?}", nt)))),
+                _ => Err(SerializationError::new(ScyllaError::parse(&format!(
+                    "Unsupported native type for lazy serialization: {:?}",
+                    nt
+                )))),
             },
-            _ => Err(SerializationError::new(ScyllaError::parse(&format!("Unsupported type for lazy serialization: {:?}", typ)))),
+            _ => Err(SerializationError::new(ScyllaError::parse(&format!(
+                "Unsupported type for lazy serialization: {:?}",
+                typ
+            )))),
         }
     }
 }
@@ -772,12 +815,12 @@ pub enum ScyllaBatchStatement {
     PreparedStatement(ResourceArc<PreparedStatementResource>),
 }
 
-impl Into<scylla::statement::batch::BatchStatement> for ScyllaBatchStatement {
-    fn into(self) -> scylla::statement::batch::BatchStatement {
-        match self {
-            Self::String(q) => q.as_str().into(),
-            Self::QueryResource(q) => q.0.to_owned().into(),
-            Self::PreparedStatement(ps) => ps.0.to_owned().into(),
+impl From<ScyllaBatchStatement> for scylla::statement::batch::BatchStatement {
+    fn from(val: ScyllaBatchStatement) -> Self {
+        match val {
+            ScyllaBatchStatement::String(q) => q.as_str().into(),
+            ScyllaBatchStatement::QueryResource(q) => q.0.to_owned().into(),
+            ScyllaBatchStatement::PreparedStatement(ps) => ps.0.to_owned().into(),
         }
     }
 }

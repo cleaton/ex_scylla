@@ -9,7 +9,8 @@ defmodule ExScylla.Types.Errors.BadKeyspaceName do
     For more details, see:
       https://docs.rs/scylla/#{Native.scylla_version()}/scylla/transport/errors/enum.BadKeyspaceName.html
   """
-  @type t :: {:empty, msg()}
-           | {:too_long, msg()}
-           | {:illegal_character, msg()}
+  @type t ::
+          {:empty, msg()}
+          | {:too_long, msg()}
+          | {:illegal_character, msg()}
 end

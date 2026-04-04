@@ -12,7 +12,7 @@ defmodule ExScylla.Examples.MetricsTest do
   test "driver side metrics", %{session: session} do
     # Perform some activity
     {:ok, _} = Session.query(session, "SELECT now() FROM system.local", [])
-    
+
     metrics = Session.get_metrics(session)
     assert %Metrics{} = metrics
     assert metrics.queries_num > 0

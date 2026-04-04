@@ -17,11 +17,11 @@ pub struct ScyllaSimpleSpeculativeExecutionPolicy {
     pub retry_interval_ms: u64,
 }
 
-impl Into<Arc<dyn SpeculativeExecutionPolicy>> for ScyllaSimpleSpeculativeExecutionPolicy {
-    fn into(self) -> Arc<dyn SpeculativeExecutionPolicy> {
+impl From<ScyllaSimpleSpeculativeExecutionPolicy> for Arc<dyn SpeculativeExecutionPolicy> {
+    fn from(val: ScyllaSimpleSpeculativeExecutionPolicy) -> Self {
         Arc::new(SimpleSpeculativeExecutionPolicy {
-            max_retry_count: self.max_retry_count,
-            retry_interval: Duration::from_millis(self.retry_interval_ms),
+            max_retry_count: val.max_retry_count,
+            retry_interval: Duration::from_millis(val.retry_interval_ms),
         })
     }
 }
@@ -40,11 +40,11 @@ pub struct ScyllaPercentileSpeculativeExecutionPolicy {
     pub percentile: f64,
 }
 
-impl Into<Arc<dyn SpeculativeExecutionPolicy>> for ScyllaPercentileSpeculativeExecutionPolicy {
-    fn into(self) -> Arc<dyn SpeculativeExecutionPolicy> {
+impl From<ScyllaPercentileSpeculativeExecutionPolicy> for Arc<dyn SpeculativeExecutionPolicy> {
+    fn from(val: ScyllaPercentileSpeculativeExecutionPolicy) -> Self {
         Arc::new(PercentileSpeculativeExecutionPolicy {
-            max_retry_count: self.max_retry_count,
-            percentile: self.percentile,
+            max_retry_count: val.max_retry_count,
+            percentile: val.percentile,
         })
     }
 }
@@ -55,11 +55,11 @@ pub enum ScyllaSpeculativeExecutionPolicy {
     Percentile(ScyllaPercentileSpeculativeExecutionPolicy),
 }
 
-impl Into<Arc<dyn SpeculativeExecutionPolicy>> for ScyllaSpeculativeExecutionPolicy {
-    fn into(self) -> Arc<dyn SpeculativeExecutionPolicy> {
-        match self {
-            Self::Simple(e) => e.into(),
-            Self::Percentile(e) => e.into(),
+impl From<ScyllaSpeculativeExecutionPolicy> for Arc<dyn SpeculativeExecutionPolicy> {
+    fn from(val: ScyllaSpeculativeExecutionPolicy) -> Self {
+        match val {
+            ScyllaSpeculativeExecutionPolicy::Simple(e) => e.into(),
+            ScyllaSpeculativeExecutionPolicy::Percentile(e) => e.into(),
         }
     }
 }
