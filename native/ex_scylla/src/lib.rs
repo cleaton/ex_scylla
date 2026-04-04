@@ -226,6 +226,7 @@ fn load(env: rustler::Env, _: rustler::Term) -> bool {
     runtime::init();
     rustler::resource!(session_builder::types::SessionBuilderResource, env);
     rustler::resource!(session::types::SessionResource, env);
+    rustler::resource!(session::types::ScyllaRawRowsResource, env);
     rustler::resource!(batch::types::BatchResource, env);
     rustler::resource!(prepared_statement::types::PreparedStatementResource, env);
     rustler::resource!(query::types::QueryResource, env);

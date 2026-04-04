@@ -35,7 +35,7 @@ defmodule ExScylla.MixProject do
         into: IO.binstream(:stdio, :line),
         env: [
           {"MIX_ENV", to_string(Mix.env())},
-          {"RUSTFLAGS", "-C instrument-coverage"}
+          {"RUSTFLAGS", "-C instrument-coverage --cfg scylla_unstable"}
         ]
       )
 

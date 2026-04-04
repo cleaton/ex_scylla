@@ -139,11 +139,29 @@ Benchee.run(
         end,
         after_scenario: fn _ -> :ok end,
         },
+      "exscylla_raw" => {
+        fn {input, _} ->
+          Enum.map(input, fn _ -> Session.async_execute_raw(session, ps, [{:text, Enum.random(args)}]) end)
+          |> Enum.map(fn {:ok, _Tag} ->
+            receive do
+              {{:execute_raw, _}, {:ok, _}} ->
+                :ok
+              other ->
+                IO.inspect(other)
+            end
+          end)
+        end,
+        before_scenario: fn input ->
+          #resource = alter_resource(resource)
+          {input, nil}
+        end,
+        after_scenario: fn _ -> :ok end,
+        },
   },
   inputs: %{
-    "Small" => Enum.to_list(1..1),
-    #"Medium" => Enum.to_list(1..10_000),
-    #"Large" => Enum.to_list(1..100_000)
+    "Small (1)" => Enum.to_list(1..1),
+    "Medium (100)" => Enum.to_list(1..100),
+    "Large (1000)" => Enum.to_list(1..1000)
   },
   time: 10,
   parallel: 5

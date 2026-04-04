@@ -146,10 +146,14 @@ impl From<&scylla::cluster::ClusterState> for ScyllaClusterState {
 
 pub struct SessionResource(pub Session);
 
+pub struct ScyllaRawRowsResource(pub bytes::Bytes);
+
 #[derive(NifStruct, Debug)]
 #[module = "ExScylla.Types.QueryResult"]
-pub struct ScyllaQueryResult {
-    pub rows: Option<Vec<ScyllaRow>>,
+pub struct ScyllaQueryResult<'a> {
+    pub rows: Option<Term<'a>>,
+    pub rows_count: Option<usize>,
+    pub column_types: Vec<ScyllaColumnType>,
     pub warnings: Vec<String>,
     pub tracing_id: Option<ScyllaBinary>,
     pub paging_state: Option<ScyllaBinary>,
@@ -189,30 +193,39 @@ impl Into<Query> for ScyllaQuery {
     }
 }
 
-impl ToElixir<ScyllaQueryResult> for QueryResult {
-    fn ex(self) -> ScyllaQueryResult {
-        let warnings = self.warnings().map(|s| s.to_string()).collect();
-        let tracing_id = self.tracing_id().map(|id| ScyllaBinary(id.as_bytes().to_vec()));
+impl<'a> ScyllaQueryResult<'a> {
+    pub fn new(env: Env<'a>, qr: QueryResult) -> Self {
+        let warnings = qr.warnings().map(|s| s.to_string()).collect();
+        let tracing_id = qr.tracing_id().map(|id| ScyllaBinary(id.as_bytes().to_vec()));
         
-        match self.into_rows_result() {
+        match qr.into_rows_result() {
             Ok(rows_res) => {
-                 let rows = rows_res.rows::<scylla::value::Row>().ok().map(|iter| {
-                     iter.map(|r| {
-                         let row = r.expect("Row deserialization failed");
-                         ScyllaRow { columns: row.columns.into_iter().map(|c| c.map(|c| c.into())).collect() }
-                     }).collect()
-                 });
-                 ScyllaQueryResult {
-                     rows,
-                     warnings,
-                     tracing_id,
-                     paging_state: None,
-                     serialized_size: 0,
-                 }
+                let column_types: Vec<ScyllaColumnType> = rows_res
+                    .column_specs()
+                    .iter()
+                    .map(|cs| cs.typ().clone().into())
+                    .collect();
+
+                let rows_count = rows_res.raw_rows_with_metadata().rows_count();
+                let raw_rows_bytes = rows_res.raw_rows_with_metadata().raw_rows().clone();
+                let res_arc = rustler::ResourceArc::new(ScyllaRawRowsResource(raw_rows_bytes));
+                let rows = Some(res_arc.make_binary(env, |r| r.0.as_ref()).to_term(env));
+
+                ScyllaQueryResult {
+                    rows,
+                    rows_count: Some(rows_count),
+                    column_types,
+                    warnings,
+                    tracing_id,
+                    paging_state: None,
+                    serialized_size: 0,
+                }
             },
             Err(_) => {
                 ScyllaQueryResult {
                     rows: None,
+                    rows_count: None,
+                    column_types: Vec::new(),
                     warnings,
                     tracing_id,
                     paging_state: None,

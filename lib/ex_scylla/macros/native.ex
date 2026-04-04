@@ -94,6 +94,7 @@ defmodule ExScylla.Macros.Native do
   @doc false
   defmacro native_f_async(macro_args) do
     name = Keyword.fetch!(macro_args, :func)
+    as_name = Keyword.get(macro_args, :as, name)
     args = Keyword.fetch!(macro_args, :args)
     args_spec = Keyword.fetch!(macro_args, :args_spec)
     return_spec = Keyword.fetch!(macro_args, :return_spec)
@@ -103,6 +104,19 @@ defmodule ExScylla.Macros.Native do
       case Keyword.get(macro_args, :type_map) do
         nil ->
           quote do
+          end
+
+        f ->
+          quote do
+            unquote(f)
+          end
+      end
+
+    post_process =
+      case Keyword.get(macro_args, :post_process) do
+        nil ->
+          quote do
+            var!(result)
           end
 
         f ->
@@ -121,9 +135,9 @@ defmodule ExScylla.Macros.Native do
     async_doc = """
     #{if docs_rs_url, do: "See: #{docs_rs_url}#method.#{name}"}
 
-    Async version of `#{name}`, returns: `{:ok, opaque} | {:error, any()}`\n
+    Async version of `#{as_name}`, returns: `{:ok, opaque} | {:error, any()}`\n
     Actual `result` (`#{return_spec_str}`) is sent to the calling process:\n
-    #{if doc_example != "", do: sync_to_async_example(to_string(name), example_wrap(doc_example, example_setup))}
+    #{if doc_example != "", do: sync_to_async_example(to_string(as_name), example_wrap(doc_example, example_setup))}
     ```
 
     """
@@ -131,7 +145,7 @@ defmodule ExScylla.Macros.Native do
     sync_doc = """
     #{if docs_rs_url, do: "See: #{docs_rs_url}#method.#{name}"}
 
-    Sync version of #{name}\n
+    Sync version of #{as_name}\n
     Returns result (`#{return_spec_str}`)\n
       or `{:error, :timeout}` after `timeout_ms`.
 
@@ -139,13 +153,13 @@ defmodule ExScylla.Macros.Native do
     """
 
     quote do
-      func_name = unquote(name)
+      func_name = unquote(as_name)
       @doc unquote(async_doc)
-      @spec unquote(:"async_#{name}")(unquote_splicing(args_spec), opaque()) ::
+      @spec unquote(:"async_#{as_name}")(unquote_splicing(args_spec), opaque()) ::
               {:ok, opaque()} | {:error, any()}
-      def unquote(:"async_#{name}")(
+      def unquote(:"async_#{as_name}")(
             unquote_splicing(args),
-            opaque \\ {unquote(:"#{name}"), make_ref()}
+            opaque \\ {unquote(:"#{as_name}"), make_ref()}
           ) do
         unquote(type_map)
 
@@ -156,16 +170,17 @@ defmodule ExScylla.Macros.Native do
       end
 
       @doc unquote(sync_doc)
-      @spec unquote(:"#{name}")(unquote_splicing(args_spec), pos_integer()) ::
+      @spec unquote(:"#{as_name}")(unquote_splicing(args_spec), pos_integer()) ::
               unquote(return_spec) | {:error, :timeout}
-      def unquote(:"#{name}")(unquote_splicing(args), timeout_ms \\ 5_000) do
-        case unquote(:"async_#{name}")(unquote_splicing(args)) do
+      def unquote(:"#{as_name}")(unquote_splicing(args), timeout_ms \\ 5_000) do
+        case unquote(:"async_#{as_name}")(unquote_splicing(args)) do
           {:ok, opaque} ->
-            receive do
-              {^opaque, result} -> result
+            var!(result) = receive do
+              {^opaque, r} -> r
             after
               timeout_ms -> {:error, :timeout}
             end
+            unquote(post_process)
 
           err ->
             err

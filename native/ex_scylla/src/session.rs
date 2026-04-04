@@ -75,9 +75,10 @@ fn s_batch<'a>(
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
         let batch: &Batch = &batch.0;
-        let res = session.batch(batch, row_values).await;
+        session.batch(batch, row_values).await
+    }, |env, res| {
         match res {
-            Ok(qr) => ScyllaResult::Ok(qr.ex()),
+            Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
     });
@@ -157,9 +158,10 @@ fn s_execute<'a>(
 
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
-        let res = session.execute_unpaged(&prepared.0, cql_values).await;
+        session.execute_unpaged(&prepared.0, cql_values).await
+    }, |env, res| {
         match res {
-            Ok(qr) => ScyllaResult::Ok(qr.ex()),
+            Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
     });
@@ -183,12 +185,13 @@ fn s_execute_paged<'a>(
     let paging_state = paging_state.map(|s| s.0).unwrap_or(scylla::response::PagingState::start());
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
-        let res = session
+        session
             .execute_single_page(&prepared.0, cql_values, paging_state)
-            .await;
+            .await
+    }, |env, res| {
         match res {
             Ok((qr, psr)) => {
-                let mut scylla_qr = qr.ex();
+                let mut scylla_qr = ScyllaQueryResult::new(env, qr);
                 if let PagingStateResponse::HasMorePages { state } = psr {
                     scylla_qr.paging_state = state.as_bytes_slice().map(|arc| ScyllaBinary(arc.to_vec()));
                 }
@@ -316,9 +319,10 @@ fn s_query<'a>(
     }
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
-        let res = session.query_unpaged(query, cql_values).await;
+        session.query_unpaged(query, cql_values).await
+    }, |env, res| {
         match res {
-            Ok(qr) => ScyllaResult::Ok(qr.ex()),
+            Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
             Err(e) => ScyllaResult::Err(e.to_string()),
         }
     });
@@ -342,10 +346,11 @@ fn s_query_paged<'a>(
     let paging_state = paging_state.map(|s| s.0).unwrap_or(scylla::response::PagingState::start());
     async_elixir!(env, opaque, {
         let session: &Session = &session.0;
-        let res = session.query_single_page(query, cql_values, paging_state).await;
+        session.query_single_page(query, cql_values, paging_state).await
+    }, |env, res| {
         match res {
             Ok((qr, psr)) => {
-                let mut scylla_qr = qr.ex();
+                let mut scylla_qr = ScyllaQueryResult::new(env, qr);
                 if let PagingStateResponse::HasMorePages { state } = psr {
                     scylla_qr.paging_state = state.as_bytes_slice().map(|arc| ScyllaBinary(arc.to_vec()));
                 }

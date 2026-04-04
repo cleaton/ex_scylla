@@ -67,6 +67,16 @@ macro_rules! async_elixir {
             owned_env.send_and_clear(&pid, |env| (opaque.load(env), res).encode(env));
         });
     };
+    ($env:ident, $opaque:expr, $e:expr, |$env_ident:ident, $res_ident:ident| $enc:expr) => {
+        let pid = $env.pid();
+        let mut owned_env = OwnedEnv::new();
+        let opaque = owned_env
+            .run(|env| -> NifResult<SavedTerm> { Ok(owned_env.save($opaque.in_env(env))) })?;
+        runtime::rt().spawn(async move {
+            let $res_ident = $e;
+            owned_env.send_and_clear(&pid, |$env_ident| (opaque.load($env_ident), $enc).encode($env_ident));
+        });
+    };
 }
 
 macro_rules! to_elixir {

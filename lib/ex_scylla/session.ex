@@ -177,6 +177,10 @@ defmodule ExScylla.Session do
                  args: [session, batch, values],
                  args_spec: [T.session(), T.batch(), T.values()],
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode(res)}
+                   other -> other
+                 end),
                  example_setup: :session_setup,
                  doc_example: """
                  iex> batch = Batch.new(:unlogged)
@@ -186,6 +190,16 @@ defmodule ExScylla.Session do
                  ...> ]
                  iex> {:ok, %QueryResult{}} = Session.batch(session, batch, values)
                  """
+
+  native_f_async func: :batch,
+                 as: :batch_raw,
+                 args: [session, batch, values],
+                 args_spec: [T.session(), T.batch(), T.values()],
+                 return_spec: {:ok, T.QueryResultRaw.t()} | {:error, QueryError.t()},
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode_raw(res)}
+                   other -> other
+                 end)
 
   native_f       func: :calculate_token,
                  args: [session, prepared, values],
@@ -212,6 +226,10 @@ defmodule ExScylla.Session do
                  args: [session, prepared, values, paging_state],
                  args_spec: [T.session(), T.prepared_statement(), T.values(), T.paging_state() | nil],
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode(res)}
+                   other -> other
+                 end),
                  example_setup: :session_setup,
                  doc_example: """
                  iex> query = "INSERT INTO test.session_doc (a, b, c) VALUES (?, ?, ?)"
@@ -224,16 +242,40 @@ defmodule ExScylla.Session do
                  iex> true = is_binary(pgs)
                  iex> {:ok, %QueryResult{}} = Session.execute_paged(session, ps, values, pgs)
                  """
+
+  native_f_async func: :execute_paged,
+                 as: :execute_raw_paged,
+                 args: [session, prepared, values, paging_state],
+                 args_spec: [T.session(), T.prepared_statement(), T.values(), T.paging_state() | nil],
+                 return_spec: {:ok, T.QueryResultRaw.t()} | {:error, QueryError.t()},
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode_raw(res)}
+                   other -> other
+                 end)
   native_f_async func: :execute,
                  args: [session, prepared, values],
                  args_spec: [T.session(), T.prepared_statement(), T.values()],
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode(res)}
+                   other -> other
+                 end),
                  example_setup: :session_setup,
                  doc_example: """
                  iex> {:ok, ps} = Session.prepare(session, "INSERT INTO test.session_doc (a, b, c) VALUES (?, ?, ?)")
                  iex> values = [{:text, "test"}, {:int, 2}, {:double, 1.0}]
                  iex> {:ok, %QueryResult{}} = Session.execute(session, ps, values)
                  """
+
+  native_f_async func: :execute,
+                 as: :execute_raw,
+                 args: [session, prepared, values],
+                 args_spec: [T.session(), T.prepared_statement(), T.values()],
+                 return_spec: {:ok, T.QueryResultRaw.t()} | {:error, QueryError.t()},
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode_raw(res)}
+                   other -> other
+                 end)
 
   native_f_async func: :fetch_schema_version,
                  args: [session],
@@ -261,6 +303,10 @@ defmodule ExScylla.Session do
                  args_spec: [T.session(), String.t() | T.query(), T.values()],
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
                  type_map: query = to_scylla_query(query),
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode(res)}
+                   other -> other
+                 end),
                  example_setup: :session_setup,
                  doc_example: """
                  iex> query = "INSERT INTO test.session_doc (a, b, c) VALUES (?, ?, ?)"
@@ -278,12 +324,27 @@ defmodule ExScylla.Session do
                  iex> {:varint, "12345678901234567890"} = v
                  """
 
+  native_f_async func: :query,
+                 as: :query_raw,
+                 args: [session, query, values],
+                 args_spec: [T.session(), String.t() | T.query(), T.values()],
+                 return_spec: {:ok, T.QueryResultRaw.t()} | {:error, QueryError.t()},
+                 type_map: query = to_scylla_query(query),
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode_raw(res)}
+                   other -> other
+                 end)
+
       # # //session::s_query_iter,
   native_f_async func: :query_paged,
                  args: [session, query, values, paging_state],
                  args_spec: [T.session(), String.t() | T.query(), T.values(), T.paging_state() | nil],
                  return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
                  type_map: query = to_scylla_query(query),
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode(res)}
+                   other -> other
+                 end),
                  example_setup: :session_setup,
                  doc_example: """
                  iex> query = "INSERT INTO test.session_doc (a, b, c) VALUES (?, ?, ?)"
@@ -296,6 +357,17 @@ defmodule ExScylla.Session do
                  iex> true = is_binary(pgs)
                  iex> {:ok, %QueryResult{}} = Session.query_paged(session, q, values, pgs)
                  """
+
+  native_f_async func: :query_paged,
+                 as: :query_raw_paged,
+                 args: [session, query, values, paging_state],
+                 args_spec: [T.session(), String.t() | T.query(), T.values(), T.paging_state() | nil],
+                 return_spec: {:ok, T.QueryResultRaw.t()} | {:error, QueryError.t()},
+                 type_map: query = to_scylla_query(query),
+                 post_process: (case result do
+                   {:ok, res} -> {:ok, QueryResult.decode_raw(res)}
+                   other -> other
+                 end)
 
   native_f_async func: :refresh_metadata,
                  args: [session],
