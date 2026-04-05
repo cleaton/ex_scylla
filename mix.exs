@@ -101,7 +101,7 @@ defmodule ExScylla.MixProject do
       {:rustler, "~> 0.37.3"},
       {:testcontainers, "~> 1.14 or ~> 2.1", only: [:test, :bench]},
       {:lcov_ex, "~> 0.3", only: [:test], runtime: false},
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
       {:benchee, "~> 1.0", only: [:bench]},
       {:erlcass, "~> 4.1", only: [:bench], runtime: false}
     ]

@@ -143,8 +143,6 @@ defmodule ExScylla.Macros.Native do
     Async version of `#{as_name}`, returns: `{:ok, opaque} | {:error, any()}`\n
     Actual `result` (`#{return_spec_str}`) is sent to the calling process:\n
     #{if doc_example != "", do: sync_to_async_example(to_string(as_name), example_wrap(doc_example, example_setup))}
-    ```
-
     """
 
     sync_doc = """

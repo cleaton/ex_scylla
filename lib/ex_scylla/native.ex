@@ -164,7 +164,7 @@ defmodule ExScylla.Native do
   # DefaultPolicyBuilder
   def dpb_build(_dpb), do: e()
   def dpb_enable_shuffling_replicas(_dpb, _enable), do: e()
-  def dpb_latency_awareness(_dpb, _latency_awarness_builder), do: e()
+  def dpb_latency_awareness(_dpb, _latency_awareness_builder), do: e()
   def dpb_new(), do: e()
   def dpb_permit_dc_failover(_dpb, _permit), do: e()
   def dpb_prefer_datacenter(_dpb, _datacenter_name), do: e()
