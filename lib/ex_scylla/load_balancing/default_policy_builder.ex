@@ -3,7 +3,7 @@ defmodule ExScylla.LoadBalancing.DefaultPolicyBuilder do
 
   use ExScylla.Macros.Native,
     prefix: :dpb,
-    docs_rs_path: "/scylla/transport/load_balancing/struct.DefaultPolicyBuilder.html"
+    docs_rs_path: "/scylla/policies/load_balancing/struct.DefaultPolicyBuilder.html"
 
   native_f(
     func: :build,

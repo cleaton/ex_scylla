@@ -1,6 +1,6 @@
 defmodule ExScylla.Types.UserDefinedType do
   use ExScylla.Macros.Native,
-    docs_rs_path: "/scylla/frame/response/result/enum.CqlValue.html#variant.UserDefinedType"
+    docs_rs_path: "/scylla/value/enum.CqlValue.html#variant.UserDefinedType"
 
   alias ExScylla.Types, as: T
 

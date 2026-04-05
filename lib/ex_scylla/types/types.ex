@@ -3,8 +3,6 @@ defmodule ExScylla.Types do
   This module defines the core type hierarchy and aliases used throughout the `ExScylla` library.
   It provides Elixir type specs that map to the underlying Rust Scylla driver types.
   """
-  alias ExScylla.Types.RoundRobinPolicy
-  alias ExScylla.Types.DcAwareRoundRobinPolicy
   alias ExScylla.Types.SimpleSpeculativeExecutionPolicy
   alias ExScylla.Types.PercentileSpeculativeExecutionPolicy
   alias ExScylla.Types.CqlDuration
@@ -31,7 +29,7 @@ defmodule ExScylla.Types do
   @opaque latency_awareness_builder :: reference()
   @opaque load_balancing_policy_resource :: reference()
   @type transport_compression :: :lz4 | :snappy
-  @type load_balancing_policy :: RoundRobinPolicy.t() | DcAwareRoundRobinPolicy.t()
+  @type load_balancing_policy :: load_balancing_policy_resource()
   @type pool_size :: {:per_host, pos_integer()} | {:per_shard, pos_integer()}
   @type retry_policy :: :default_retry_policy | :fall_through_retry_policy
   @type speculative_execution_policy ::

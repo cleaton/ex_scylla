@@ -1,7 +1,7 @@
 defmodule ExScylla.Types.Errors.QueryError do
   @moduledoc """
   Represents an error that can occur during query execution.
-  Maps to `scylla::transport::errors::QueryError`.
+  Maps to `scylla::errors::ExecutionError`.
   """
   alias ExScylla.Types.Errors.DbError
   alias ExScylla.Types.Errors.BadQuery
@@ -10,7 +10,7 @@ defmodule ExScylla.Types.Errors.QueryError do
   @type msg :: String.t()
   @typedoc """
     For more details, see:
-      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/transport/errors/enum.QueryError.html
+      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/errors/enum.ExecutionError.html
   """
   @type t ::
           {:db_error, DbError.t()}

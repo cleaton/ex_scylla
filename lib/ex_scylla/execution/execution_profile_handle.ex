@@ -3,7 +3,7 @@ defmodule ExScylla.Execution.ExecutionProfileHandle do
 
   use ExScylla.Macros.Native,
     prefix: :eph,
-    docs_rs_path: "/scylla/transport/execution_profile/struct.ExecutionProfileHandle.html"
+    docs_rs_path: "/scylla/client/execution_profile/struct.ExecutionProfileHandle.html"
 
   native_f(
     func: :map_to_another_profile,

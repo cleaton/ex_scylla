@@ -6,7 +6,7 @@ defmodule ExScylla.Statement.Prepared do
 
   use ExScylla.Macros.Native,
     prefix: :ps,
-    docs_rs_path: "/scylla/statement/prepared_statement/struct.PreparedStatement.html",
+    docs_rs_path: "/scylla/statement/prepared/struct.PreparedStatement.html",
     ps_setup: """
     iex> node = Application.get_env(:ex_scylla, :test_node, "127.0.0.1:9042")
     iex> {:ok, session} = SessionBuilder.new()
@@ -174,6 +174,7 @@ defmodule ExScylla.Statement.Prepared do
 
   native_f(
     func: :get_prepared_metadata,
+    docs_rs_method: false,
     args: [ps],
     args_spec: [T.prepared_statement()],
     return_spec: PreparedMetadata.t(),

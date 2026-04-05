@@ -56,7 +56,7 @@ https://hex.pm/packages/ex_scylla
 ```elixir
 def deps do
   [
-    {:ex_scylla, "~> 0.9.0"}
+    {:ex_scylla, "~> 0.9.1"}
   ]
 end
 ```
