@@ -32,10 +32,10 @@ defmodule ExScylla.LoadBalancing.DefaultPolicyBuilder do
   native_f(
     func: :latency_awareness,
     args: [epb, latency_awareness_builder],
-    args_spec: [T.default_policy_builder(), T.latency_awarness_builder()],
+    args_spec: [T.default_policy_builder(), T.latency_awareness_builder()],
     return_spec: T.default_policy_builder(),
     doc_example: """
-    iex> lab = LatencyAwarnessBuilder.new()
+    iex> lab = LatencyAwarenessBuilder.new()
     iex> dpb = DefaultPolicyBuilder.new()
     ...>        |> DefaultPolicyBuilder.latency_awareness(lab)
     iex> true = is_reference(dpb)

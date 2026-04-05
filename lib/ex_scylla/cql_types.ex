@@ -1,4 +1,4 @@
-defmodule ExScylla.CQLTypes do
+defmodule ExScylla.CqlTypes do
   @moduledoc """
   Pure Elixir codec for ScyllaDB types.
   """

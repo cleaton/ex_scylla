@@ -82,7 +82,7 @@ defmodule ExScylla.Types.QueryResult do
         [type | types],
         acc
       ) do
-    val = ExScylla.CQLTypes.decode_value(val_bin, type)
+    val = ExScylla.CqlTypes.decode_value(val_bin, type)
     decode_row(rest, types, [{type, val} | acc])
   end
 
@@ -98,7 +98,7 @@ defmodule ExScylla.Types.QueryResult do
         [type | types],
         acc
       ) do
-    val = ExScylla.CQLTypes.decode_value(val_bin, type)
+    val = ExScylla.CqlTypes.decode_value(val_bin, type)
     decode_row_raw(rest, types, [val | acc])
   end
 end
