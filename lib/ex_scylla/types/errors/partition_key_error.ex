@@ -1,13 +1,13 @@
 defmodule ExScylla.Types.Errors.PartitionKeyError do
   @moduledoc """
   Represents an error related to a partition key.
-  Maps to `scylla::statement::prepared_statement::PartitionKeyError`.
+  Maps to `scylla::statement::prepared::PartitionKeyError`.
   """
   alias ExScylla.Macros.Native
   @type msg :: String.t()
   @typedoc """
     For more details, see:
-      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/statement/prepared_statement/enum.PartitionKeyError.html
+      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/statement/prepared/enum.PartitionKeyError.html
   """
   @type t ::
           {:no_pk_index_value, msg()}

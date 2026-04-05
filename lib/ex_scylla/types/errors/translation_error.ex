@@ -1,13 +1,13 @@
 defmodule ExScylla.Types.Errors.TranslationError do
   @moduledoc """
   Represents an error related to address translation.
-  Maps to `scylla::transport::errors::TranslationError`.
+  Maps to `scylla::errors::TranslationError`.
   """
   alias ExScylla.Macros.Native
   @type msg :: String.t()
   @typedoc """
     For more details, see:
-      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/transport/errors/enum.TranslationError.html
+      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/errors/enum.TranslationError.html
   """
   @type t ::
           {:invalid_address_in_rule, msg()}

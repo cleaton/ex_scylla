@@ -4,7 +4,7 @@ defmodule ExScylla.SessionBuilder do
 
   use ExScylla.Macros.Native,
     prefix: :sb,
-    docs_rs_path: "/scylla/client/session_builder/struct.SessionBuilder.html"
+    docs_rs_path: "/scylla/client/session_builder/struct.GenericSessionBuilder.html"
 
   native_f(
     func: :default_execution_profile_handle,
@@ -23,6 +23,7 @@ defmodule ExScylla.SessionBuilder do
 
   native_f(
     func: :auto_schema_agreement_timeout,
+    docs_rs_method: :schema_agreement_timeout,
     args: [sb, timeout_ms],
     args_spec: [T.session_builder(), pos_integer()],
     return_spec: T.session_builder(),
@@ -193,6 +194,7 @@ defmodule ExScylla.SessionBuilder do
 
   native_f(
     func: :no_auto_schema_agreement,
+    docs_rs_method: :auto_await_schema_agreement,
     args: [sb],
     args_spec: [T.session_builder()],
     return_spec: T.session_builder(),

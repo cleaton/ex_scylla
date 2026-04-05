@@ -4,7 +4,7 @@ defmodule ExScylla.Execution.ExecutionProfileBuilder do
 
   use ExScylla.Macros.Native,
     prefix: :epb,
-    docs_rs_path: "/scylla/transport/execution_profile/struct.ExecutionProfileBuilder.html"
+    docs_rs_path: "/scylla/client/execution_profile/struct.ExecutionProfileBuilder.html"
 
   @spec new :: T.execution_profile_builder()
   def new(), do: ExecutionProfile.builder()

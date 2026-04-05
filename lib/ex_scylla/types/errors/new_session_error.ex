@@ -1,15 +1,16 @@
 defmodule ExScylla.Types.Errors.NewSessionError do
   @moduledoc """
   Represents an error that can occur when creating a new session.
-  Maps to `scylla::transport::errors::NewSessionError`.
+  Maps to `scylla::errors::NewSessionError`.
   """
   alias ExScylla.Macros.Native
-  alias ExScylla.Types.Errors.DbError
   alias ExScylla.Types.Errors.BadQuery
+  alias ExScylla.Types.Errors.DbError
+  alias ExScylla.Types.Errors.TranslationError
   @type msg :: String.t()
   @typedoc """
     For more details, see:
-      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/transport/errors/enum.NewSessionError.html
+      https://docs.rs/scylla/#{Native.scylla_version()}/scylla/errors/enum.NewSessionError.html
   """
   @type t ::
           {:failed_to_resolve_any_hostname, msg()}

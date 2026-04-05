@@ -3,7 +3,8 @@ defmodule ExScylla.Types.PreparedMetadata do
   alias ExScylla.Types.ColumnSpec
 
   use ExScylla.Macros.Native,
-    docs_rs_path: "/scylla/frame/response/result/struct.PreparedMetadata.html"
+    docs_rs_crate: :scylla_cql,
+    docs_rs_path: "/scylla_cql/frame/response/result/struct.PreparedMetadata.html"
 
   native_struct(
     col_count: non_neg_integer(),

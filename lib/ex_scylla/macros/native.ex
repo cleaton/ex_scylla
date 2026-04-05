@@ -11,16 +11,36 @@ defmodule ExScylla.Macros.Native do
                     end
                   end)
 
+  @scylla_cql_version File.read!("#{File.cwd!()}/native/ex_scylla/Cargo.lock")
+                      |> String.split("[[package]]")
+                      |> Enum.find_value(nil, fn l ->
+                        case l |> String.trim() |> String.split("\n") do
+                          ["name = \"scylla-cql\"", "version = " <> version | _] ->
+                            String.trim(version, "\"")
+
+                          _ ->
+                            false
+                        end
+                      end)
+
   def scylla_version(), do: @scylla_version
+  def scylla_cql_version(), do: @scylla_cql_version
   @r ~r"> \s*(?<res>.*)\s*=\s*.*\.(?<func>.*)\(.*"
   @spec __using__(keyword) :: {:__block__, [], [{any, any, any}, ...]}
   defmacro __using__(opts) do
     prefix = Keyword.get(opts, :prefix)
     docs_rs_path = Keyword.get(opts, :docs_rs_path)
+    docs_rs_crate = Keyword.get(opts, :docs_rs_crate, :scylla)
+
+    docs_rs_base =
+      case docs_rs_crate do
+        :scylla -> "https://docs.rs/scylla/#{@scylla_version}"
+        :scylla_cql -> "https://docs.rs/scylla-cql/#{@scylla_cql_version}"
+      end
 
     docs_url =
       if docs_rs_path do
-        docs_url = "https://docs.rs/scylla/#{@scylla_version}" <> docs_rs_path
+        docs_url = docs_rs_base <> docs_rs_path
         Module.register_attribute(__CALLER__.module, :docs_rs_url, persist: true)
         Module.put_attribute(__CALLER__.module, :docs_rs_url, docs_url)
         docs_url
@@ -31,7 +51,7 @@ defmodule ExScylla.Macros.Native do
     Module.register_attribute(__CALLER__.module, :prefix, persist: true)
     Module.put_attribute(__CALLER__.module, :prefix, prefix)
 
-    for {k, v} <- Keyword.drop(opts, [:prefix, :docs_rs_path]) do
+    for {k, v} <- Keyword.drop(opts, [:prefix, :docs_rs_path, :docs_rs_crate]) do
       Module.register_attribute(__CALLER__.module, k, persist: true)
       Module.put_attribute(__CALLER__.module, k, v)
     end
@@ -76,9 +96,10 @@ defmodule ExScylla.Macros.Native do
 
     prefix = Module.get_attribute(__CALLER__.module, :prefix)
     docs_rs_url = Module.get_attribute(__CALLER__.module, :docs_rs_url)
+    docs_rs_suffix = docs_rs_method_suffix(Keyword.get(macro_args, :docs_rs_method, :default), name)
 
     doc = """
-    #{if docs_rs_url, do: "See: #{docs_rs_url}#method.#{name}"}
+    #{if docs_rs_url != "", do: "See: #{docs_rs_url}#{docs_rs_suffix}"}
     #{if doc_example != "", do: example_wrap(doc_example, example_setup)}
     """
 
@@ -136,9 +157,10 @@ defmodule ExScylla.Macros.Native do
 
     prefix = Module.get_attribute(__CALLER__.module, :prefix)
     docs_rs_url = Module.get_attribute(__CALLER__.module, :docs_rs_url)
+    docs_rs_suffix = docs_rs_method_suffix(Keyword.get(macro_args, :docs_rs_method, :default), name)
 
     async_doc = """
-    #{if docs_rs_url, do: "See: #{docs_rs_url}#method.#{name}"}
+    #{if docs_rs_url != "", do: "See: #{docs_rs_url}#{docs_rs_suffix}"}
 
     Async version of `#{as_name}`, returns: `{:ok, opaque} | {:error, any()}`\n
     Actual `result` (`#{return_spec_str}`) is sent to the calling process:\n
@@ -146,7 +168,7 @@ defmodule ExScylla.Macros.Native do
     """
 
     sync_doc = """
-    #{if docs_rs_url, do: "See: #{docs_rs_url}#method.#{name}"}
+    #{if docs_rs_url != "", do: "See: #{docs_rs_url}#{docs_rs_suffix}"}
 
     Sync version of #{as_name}\n
     Returns result (`#{return_spec_str}`)\n
@@ -193,6 +215,11 @@ defmodule ExScylla.Macros.Native do
       end
     end
   end
+
+  defp docs_rs_method_suffix(:default, name), do: "#method.#{name}"
+  defp docs_rs_method_suffix(false, _), do: ""
+  defp docs_rs_method_suffix(nil, _), do: ""
+  defp docs_rs_method_suffix(method, _) when is_atom(method), do: "#method.#{method}"
 
   defp example_wrap("", _), do: ""
 

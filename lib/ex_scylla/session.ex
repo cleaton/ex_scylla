@@ -23,6 +23,7 @@ defmodule ExScylla.Session do
 
   native_f(
     func: :calculate_token_for_partition_key,
+    docs_rs_method: false,
     args: [session, keyspace, table, partition_key],
     args_spec: [T.session(), String.t(), String.t(), T.values()],
     return_spec: Token.t() | nil | {:error, SerializeValuesError.t()},
@@ -182,6 +183,7 @@ defmodule ExScylla.Session do
 
   native_f_async(
     func: :await_timed_schema_agreement,
+    docs_rs_method: :await_schema_agreement,
     args: [session, timeout_ms],
     args_spec: [T.session(), pos_integer()],
     return_spec: {:ok, boolean()} | {:error, QueryError.t()},
@@ -228,6 +230,7 @@ defmodule ExScylla.Session do
 
   native_f(
     func: :calculate_token,
+    docs_rs_method: false,
     args: [session, prepared, values],
     args_spec: [T.session(), T.prepared_statement(), T.values()],
     return_spec: Token.t() | nil | {:error, SerializeValuesError.t() | QueryError.t()},
@@ -253,6 +256,7 @@ defmodule ExScylla.Session do
 
   native_f_async(
     func: :execute_paged,
+    docs_rs_method: :execute_single_page,
     args: [session, prepared, values, paging_state],
     args_spec: [T.session(), T.prepared_statement(), T.values(), T.paging_state() | nil],
     return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
@@ -277,6 +281,7 @@ defmodule ExScylla.Session do
 
   native_f_async(
     func: :execute_paged,
+    docs_rs_method: :execute_single_page,
     as: :execute_raw_paged,
     args: [session, prepared, values, paging_state],
     args_spec: [T.session(), T.prepared_statement(), T.values(), T.paging_state() | nil],
@@ -290,6 +295,7 @@ defmodule ExScylla.Session do
 
   native_f_async(
     func: :execute,
+    docs_rs_method: :execute_unpaged,
     args: [session, prepared, values],
     args_spec: [T.session(), T.prepared_statement(), T.values()],
     return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
@@ -308,6 +314,7 @@ defmodule ExScylla.Session do
 
   native_f_async(
     func: :execute,
+    docs_rs_method: :execute_unpaged,
     as: :execute_raw,
     args: [session, prepared, values],
     args_spec: [T.session(), T.prepared_statement(), T.values()],
@@ -321,6 +328,7 @@ defmodule ExScylla.Session do
 
   native_f_async(
     func: :fetch_schema_version,
+    docs_rs_method: :await_schema_agreement,
     args: [session],
     args_spec: [T.session()],
     return_spec: {:ok, T.uuid()} | {:error, QueryError.t()},
@@ -346,6 +354,7 @@ defmodule ExScylla.Session do
 
   native_f_async(
     func: :query,
+    docs_rs_method: :query_unpaged,
     args: [session, query, values],
     args_spec: [T.session(), String.t() | T.query(), T.values()],
     return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
@@ -375,6 +384,7 @@ defmodule ExScylla.Session do
 
   native_f_async(
     func: :query,
+    docs_rs_method: :query_unpaged,
     as: :query_raw,
     args: [session, query, values],
     args_spec: [T.session(), String.t() | T.query(), T.values()],
@@ -390,6 +400,7 @@ defmodule ExScylla.Session do
   # # //session::s_query_iter,
   native_f_async(
     func: :query_paged,
+    docs_rs_method: :query_single_page,
     args: [session, query, values, paging_state],
     args_spec: [T.session(), String.t() | T.query(), T.values(), T.paging_state() | nil],
     return_spec: {:ok, QueryResult.t()} | {:error, QueryError.t()},
@@ -415,6 +426,7 @@ defmodule ExScylla.Session do
 
   native_f_async(
     func: :query_paged,
+    docs_rs_method: :query_single_page,
     as: :query_raw_paged,
     args: [session, query, values, paging_state],
     args_spec: [T.session(), String.t() | T.query(), T.values(), T.paging_state() | nil],

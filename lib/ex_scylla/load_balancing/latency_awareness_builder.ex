@@ -3,7 +3,7 @@ defmodule ExScylla.LoadBalancing.LatencyAwarenessBuilder do
 
   use ExScylla.Macros.Native,
     prefix: :lab,
-    docs_rs_path: "/scylla/transport/load_balancing/struct.LatencyAwarenessBuilder.html"
+    docs_rs_path: "/scylla/policies/load_balancing/struct.LatencyAwarenessBuilder.html"
 
   native_f(
     func: :exclusion_threshold,

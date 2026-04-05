@@ -1,7 +1,7 @@
 defmodule ExScylla.Types.SimpleSpeculativeExecutionPolicy do
   use ExScylla.Macros.Native,
     docs_rs_path:
-      "/scylla/transport/speculative_execution/struct.SimpleSpeculativeExecutionPolicy.html"
+      "/scylla/policies/speculative_execution/struct.SimpleSpeculativeExecutionPolicy.html"
 
   native_struct(
     max_retry_count: pos_integer(),
