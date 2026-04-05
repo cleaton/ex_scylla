@@ -1,6 +1,6 @@
 use rustler::Atom;
 use rustler::ResourceArc;
-use scylla::batch::{Batch, BatchStatement};
+use scylla::statement::batch::{Batch, BatchStatement};
 
 pub mod types;
 use crate::consts::*;
@@ -20,13 +20,19 @@ fn b_append_statement(
 }
 
 #[rustler::nif]
-fn b_get_execution_profile_handle(qr: ResourceArc<BatchResource>) -> Option<ResourceArc<ExecutionProfileHandleResource>> {
+fn b_get_execution_profile_handle(
+    qr: ResourceArc<BatchResource>,
+) -> Option<ResourceArc<ExecutionProfileHandleResource>> {
     let b: &Batch = &qr.0;
-    b.get_execution_profile_handle().map(|h| ResourceArc::new(ExecutionProfileHandleResource(h.clone())))
+    b.get_execution_profile_handle()
+        .map(|h| ResourceArc::new(ExecutionProfileHandleResource(h.clone())))
 }
 
 #[rustler::nif]
-fn b_set_execution_profile_handle(q: ResourceArc<BatchResource>, profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>) -> ResourceArc<BatchResource> {
+fn b_set_execution_profile_handle(
+    q: ResourceArc<BatchResource>,
+    profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>,
+) -> ResourceArc<BatchResource> {
     let mut b: Batch = q.0.to_owned();
     b.set_execution_profile_handle(profile_handle.map(|ephr| ephr.0.clone()));
     ResourceArc::new(BatchResource(b))
@@ -42,6 +48,22 @@ fn b_get_is_idempotent(batch: ResourceArc<BatchResource>) -> bool {
     let b: &Batch = &batch.0;
     b.get_is_idempotent()
 }
+#[rustler::nif]
+fn b_get_request_timeout(batch: ResourceArc<BatchResource>) -> Option<u64> {
+    let b: &Batch = &batch.0;
+    b.get_request_timeout().map(|d| d.as_millis() as u64)
+}
+
+#[rustler::nif]
+fn b_set_request_timeout(
+    batch: ResourceArc<BatchResource>,
+    timeout_ms: Option<u64>,
+) -> ResourceArc<BatchResource> {
+    let mut b: Batch = batch.0.to_owned();
+    b.set_request_timeout(timeout_ms.map(std::time::Duration::from_millis));
+    ResourceArc::new(BatchResource(b))
+}
+
 #[rustler::nif]
 fn b_get_retry_policy(_batch: ResourceArc<BatchResource>) -> Atom {
     not_implemented_yet()

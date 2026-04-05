@@ -1,15 +1,15 @@
 defmodule ExScylla.Macros.Native do
   @scylla_version File.read!("#{File.cwd!()}/native/ex_scylla/Cargo.lock")
-  |> String.split("[[package]]")
-  |> Enum.find_value(nil, fn l ->
-    case l |> String.trim() |> String.split("\n") do
-      ["name = \"scylla\"", "version = " <> version | _] ->
-        String.trim(version, "\"")
+                  |> String.split("[[package]]")
+                  |> Enum.find_value(nil, fn l ->
+                    case l |> String.trim() |> String.split("\n") do
+                      ["name = \"scylla\"", "version = " <> version | _] ->
+                        String.trim(version, "\"")
 
-      _ ->
-        false
-    end
-  end)
+                      _ ->
+                        false
+                    end
+                  end)
 
   def scylla_version(), do: @scylla_version
   @r ~r"> \s*(?<res>.*)\s*=\s*.*\.(?<func>.*)\(.*"
@@ -68,10 +68,11 @@ defmodule ExScylla.Macros.Native do
     return_spec = Keyword.fetch!(macro_args, :return_spec)
     doc_example = Keyword.get(macro_args, :doc_example, "")
 
-    example_setup = if Keyword.get(macro_args, :example_setup) do
-      Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup))
-      |> String.trim_trailing("\n")
-    end
+    example_setup =
+      if Keyword.get(macro_args, :example_setup) do
+        Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup))
+        |> String.trim_trailing("\n")
+      end
 
     prefix = Module.get_attribute(__CALLER__.module, :prefix)
     docs_rs_url = Module.get_attribute(__CALLER__.module, :docs_rs_url)
@@ -94,6 +95,7 @@ defmodule ExScylla.Macros.Native do
   @doc false
   defmacro native_f_async(macro_args) do
     name = Keyword.fetch!(macro_args, :func)
+    as_name = Keyword.get(macro_args, :as, name)
     args = Keyword.fetch!(macro_args, :args)
     args_spec = Keyword.fetch!(macro_args, :args_spec)
     return_spec = Keyword.fetch!(macro_args, :return_spec)
@@ -111,19 +113,36 @@ defmodule ExScylla.Macros.Native do
           end
       end
 
+    post_process =
+      case Keyword.get(macro_args, :post_process) do
+        nil ->
+          quote do
+            var!(result)
+          end
+
+        f ->
+          quote do
+            unquote(f)
+          end
+      end
+
     doc_example = Keyword.get(macro_args, :doc_example, "")
-    example_setup = if Keyword.get(macro_args, :example_setup) do
-      Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup)) |> String.trim_trailing("\n")
-    end
+
+    example_setup =
+      if Keyword.get(macro_args, :example_setup) do
+        Module.get_attribute(__CALLER__.module, Keyword.get(macro_args, :example_setup))
+        |> String.trim_trailing("\n")
+      end
+
     prefix = Module.get_attribute(__CALLER__.module, :prefix)
     docs_rs_url = Module.get_attribute(__CALLER__.module, :docs_rs_url)
 
     async_doc = """
     #{if docs_rs_url, do: "See: #{docs_rs_url}#method.#{name}"}
 
-    Async version of `#{name}`, returns: `{:ok, opaque} | {:error, any()}`\n
+    Async version of `#{as_name}`, returns: `{:ok, opaque} | {:error, any()}`\n
     Actual `result` (`#{return_spec_str}`) is sent to the calling process:\n
-    #{if doc_example != "", do: sync_to_async_example(to_string(name), example_wrap(doc_example, example_setup))}
+    #{if doc_example != "", do: sync_to_async_example(to_string(as_name), example_wrap(doc_example, example_setup))}
     ```
 
     """
@@ -131,7 +150,7 @@ defmodule ExScylla.Macros.Native do
     sync_doc = """
     #{if docs_rs_url, do: "See: #{docs_rs_url}#method.#{name}"}
 
-    Sync version of #{name}\n
+    Sync version of #{as_name}\n
     Returns result (`#{return_spec_str}`)\n
       or `{:error, :timeout}` after `timeout_ms`.
 
@@ -139,13 +158,13 @@ defmodule ExScylla.Macros.Native do
     """
 
     quote do
-      func_name = unquote(name)
+      func_name = unquote(as_name)
       @doc unquote(async_doc)
-      @spec unquote(:"async_#{name}")(unquote_splicing(args_spec), opaque()) ::
+      @spec unquote(:"async_#{as_name}")(unquote_splicing(args_spec), opaque()) ::
               {:ok, opaque()} | {:error, any()}
-      def unquote(:"async_#{name}")(
+      def unquote(:"async_#{as_name}")(
             unquote_splicing(args),
-            opaque \\ {unquote(:"#{name}"), make_ref()}
+            opaque \\ {unquote(:"#{as_name}"), make_ref()}
           ) do
         unquote(type_map)
 
@@ -156,16 +175,19 @@ defmodule ExScylla.Macros.Native do
       end
 
       @doc unquote(sync_doc)
-      @spec unquote(:"#{name}")(unquote_splicing(args_spec), pos_integer()) ::
+      @spec unquote(:"#{as_name}")(unquote_splicing(args_spec), pos_integer()) ::
               unquote(return_spec) | {:error, :timeout}
-      def unquote(:"#{name}")(unquote_splicing(args), timeout_ms \\ 5_000) do
-        case unquote(:"async_#{name}")(unquote_splicing(args)) do
+      def unquote(:"#{as_name}")(unquote_splicing(args), timeout_ms \\ 5_000) do
+        case unquote(:"async_#{as_name}")(unquote_splicing(args)) do
           {:ok, opaque} ->
-            receive do
-              {^opaque, result} -> result
-            after
-              timeout_ms -> {:error, :timeout}
-            end
+            var!(result) =
+              receive do
+                {^opaque, r} -> r
+              after
+                timeout_ms -> {:error, :timeout}
+              end
+
+            unquote(post_process)
 
           err ->
             err
@@ -210,11 +232,15 @@ defmodule ExScylla.Macros.Native do
 
         """
         #{str}
-        iex> #{result_var}= receive do
-        ...>   {^opaque, r} -> r
-        ...>  after
-        ...>    5_000 -> :timeout
-        ...>  end
+        iex> #{result_var} = receive do
+        ...>   {^opaque, r} ->
+        ...>     case r do
+        ...>       {:ok, %ExScylla.Types.QueryResult{} = res} -> {:ok, ExScylla.Types.QueryResult.decode(res)}
+        ...>       other -> other
+        ...>     end
+        ...> after
+        ...>   5_000 -> :timeout
+        ...> end
         """
         |> String.trim_trailing("\n")
       else

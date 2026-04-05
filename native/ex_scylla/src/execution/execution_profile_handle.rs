@@ -1,11 +1,11 @@
 use rustler::ResourceArc;
-use scylla::execution_profile::ExecutionProfileHandle;
-use std::cell::Cell;
+use scylla::client::execution_profile::ExecutionProfileHandle;
 use std::sync::Mutex;
 
 use super::execution_profile::ExecutionProfileResource;
 use super::execution_profile_builder::ExecutionProfileBuilderResource;
 pub struct ExecutionProfileHandleResource(pub ExecutionProfileHandle);
+impl std::panic::RefUnwindSafe for ExecutionProfileHandleResource {}
 
 #[rustler::nif]
 fn eph_map_to_another_profile(
@@ -21,7 +21,7 @@ fn eph_pointee_to_builder(
     ephr: ResourceArc<ExecutionProfileHandleResource>,
 ) -> ResourceArc<ExecutionProfileBuilderResource> {
     let eph: ExecutionProfileHandle = ephr.0.clone();
-    ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(Cell::new(
-        eph.pointee_to_builder()
-    ))))
+    ResourceArc::new(ExecutionProfileBuilderResource(Mutex::new(
+        eph.pointee_to_builder(),
+    )))
 }

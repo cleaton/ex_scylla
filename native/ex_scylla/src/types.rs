@@ -2,7 +2,7 @@ use crate::utils::*;
 use rustler::NifUnitEnum;
 use scylla::statement::Consistency;
 use scylla::statement::SerialConsistency;
-use scylla::transport::Compression;
+use scylla_cql::frame::Compression;
 
 clone_enum!(Consistency, ScyllaConsistency, {
     Any,
@@ -13,6 +13,8 @@ clone_enum!(Consistency, ScyllaConsistency, {
     All,
     LocalQuorum,
     EachQuorum,
+    Serial,
+    LocalSerial,
     LocalOne
 });
 

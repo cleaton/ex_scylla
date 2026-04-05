@@ -1,4 +1,8 @@
 defmodule ExScylla.Types.Errors.BadQuery do
+  @moduledoc """
+  Represents an error related to a bad query.
+  Maps to `scylla::transport::errors::BadQuery`.
+  """
   alias ExScylla.Macros.Native
   alias ExScylla.Types.Errors.SerializeValuesError
   alias ExScylla.Types.Errors.BadKeyspaceName
@@ -7,7 +11,8 @@ defmodule ExScylla.Types.Errors.BadQuery do
     For more details, see:
       https://docs.rs/scylla/#{Native.scylla_version()}/scylla/transport/errors/enum.BadQuery.html
   """
-  @type t :: {:serialize_values_error, SerializeValuesError.t()}
-           | {:values_too_long_for_key, msg()}
-           | {:bad_keyspace_name, BadKeyspaceName.t()}
+  @type t ::
+          {:serialize_values_error, SerializeValuesError.t()}
+          | {:values_too_long_for_key, msg()}
+          | {:bad_keyspace_name, BadKeyspaceName.t()}
 end

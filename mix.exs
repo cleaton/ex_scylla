@@ -4,7 +4,7 @@ defmodule ExScylla.MixProject do
   def project do
     [
       app: :ex_scylla,
-      version: "0.5.1",
+      version: "0.9.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       test_coverage: [tool: LcovEx, output: "cover"],
@@ -35,7 +35,7 @@ defmodule ExScylla.MixProject do
         into: IO.binstream(:stdio, :line),
         env: [
           {"MIX_ENV", to_string(Mix.env())},
-          {"RUSTFLAGS", "-C instrument-coverage"}
+          {"RUSTFLAGS", "-C instrument-coverage --cfg scylla_unstable"}
         ]
       )
 
@@ -52,18 +52,23 @@ defmodule ExScylla.MixProject do
     case args do
       [bench_name] ->
         filename = "bench/#{bench_name}.exs"
+
         if File.exists?(filename) do
           Mix.shell().info("Running benchmark: #{filename}")
-          {_, res} = System.cmd("mix", ["run", filename],
-            into: IO.binstream(:stdio, :line),
-            env: [{"MIX_ENV", "bench"}]
-          )
+
+          {_, res} =
+            System.cmd("mix", ["run", filename],
+              into: IO.binstream(:stdio, :line),
+              env: [{"MIX_ENV", "bench"}]
+            )
+
           if res > 0 do
             System.at_exit(fn _ -> exit({:shutdown, 1}) end)
           end
         else
           Mix.shell().error("Benchmark file not found: #{filename}")
         end
+
       _ ->
         Mix.shell().error("Usage: mix bench <benchmark_name>")
     end
@@ -93,8 +98,8 @@ defmodule ExScylla.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.29.1"},
-      {:testcontainers, "~> 1.11", only: [:test, :bench]},
+      {:rustler, "~> 0.37.3"},
+      {:testcontainers, "~> 1.14 or ~> 2.1", only: [:test, :bench]},
       {:lcov_ex, "~> 0.3", only: [:test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:benchee, "~> 1.0", only: [:bench]},

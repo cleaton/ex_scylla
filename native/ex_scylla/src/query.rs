@@ -6,17 +6,23 @@ use crate::execution::execution_profile_handle::ExecutionProfileHandleResource;
 use crate::types::*;
 use crate::utils::*;
 use rustler::{Atom, ResourceArc};
-use scylla::query::Query;
+use scylla::statement::unprepared::Statement as Query;
 use types::*;
 
 #[rustler::nif]
-fn q_get_execution_profile_handle(qr: ResourceArc<QueryResource>) -> Option<ResourceArc<ExecutionProfileHandleResource>> {
+fn q_get_execution_profile_handle(
+    qr: ResourceArc<QueryResource>,
+) -> Option<ResourceArc<ExecutionProfileHandleResource>> {
     let q: &Query = &qr.0;
-    q.get_execution_profile_handle().map(|h| ResourceArc::new(ExecutionProfileHandleResource(h.clone())))
+    q.get_execution_profile_handle()
+        .map(|h| ResourceArc::new(ExecutionProfileHandleResource(h.clone())))
 }
 
 #[rustler::nif]
-fn q_set_execution_profile_handle(q: ResourceArc<QueryResource>, profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>) -> ResourceArc<QueryResource> {
+fn q_set_execution_profile_handle(
+    q: ResourceArc<QueryResource>,
+    profile_handle: Option<ResourceArc<ExecutionProfileHandleResource>>,
+) -> ResourceArc<QueryResource> {
     let mut q: Query = q.0.to_owned();
     q.set_execution_profile_handle(profile_handle.map(|ephr| ephr.0.clone()));
     q.ex()
@@ -29,16 +35,12 @@ fn q_get_request_timeout(qr: ResourceArc<QueryResource>) -> Option<u64> {
 }
 
 #[rustler::nif]
-fn q_set_request_timeout(q: ResourceArc<QueryResource>, timeout_ms: Option<u64>) -> ResourceArc<QueryResource> {
+fn q_set_request_timeout(
+    q: ResourceArc<QueryResource>,
+    timeout_ms: Option<u64>,
+) -> ResourceArc<QueryResource> {
     let mut q: Query = q.0.to_owned();
-    q.set_request_timeout(timeout_ms.map(|ms| Duration::from_millis(ms)));
-    q.ex()
-}
-
-#[rustler::nif]
-fn q_disable_paging(q: ResourceArc<QueryResource>) -> ResourceArc<QueryResource> {
-    let mut q: Query = q.0.to_owned();
-    q.disable_paging();
+    q.set_request_timeout(timeout_ms.map(Duration::from_millis));
     q.ex()
 }
 
@@ -55,7 +57,7 @@ fn q_get_is_idempotent(q: ResourceArc<QueryResource>) -> bool {
 }
 
 #[rustler::nif]
-fn q_get_page_size(q: ResourceArc<QueryResource>) -> Option<i32> {
+fn q_get_page_size(q: ResourceArc<QueryResource>) -> i32 {
     let q: &Query = &q.0;
     q.get_page_size()
 }

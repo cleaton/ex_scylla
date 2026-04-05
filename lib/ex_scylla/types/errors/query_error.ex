@@ -1,4 +1,8 @@
 defmodule ExScylla.Types.Errors.QueryError do
+  @moduledoc """
+  Represents an error that can occur during query execution.
+  Maps to `scylla::transport::errors::QueryError`.
+  """
   alias ExScylla.Types.Errors.DbError
   alias ExScylla.Types.Errors.BadQuery
   alias ExScylla.Types.Errors.TranslationError
@@ -8,13 +12,14 @@ defmodule ExScylla.Types.Errors.QueryError do
     For more details, see:
       https://docs.rs/scylla/#{Native.scylla_version()}/scylla/transport/errors/enum.QueryError.html
   """
-  @type t :: {:db_error, DbError.t()}
-           | {:bad_query, BadQuery.t()}
-           | {:io_error, msg()}
-           | {:protocol_error, msg()}
-           | {:invalid_message, msg()}
-           | {:timeout_error, msg()}
-           | {:too_many_oprhaned_stream_ids, msg()}
-           | {:unable_to_alloc_stream_id, msg()}
-           | {:translation_error, TranslationError.t()}
+  @type t ::
+          {:db_error, DbError.t()}
+          | {:bad_query, BadQuery.t()}
+          | {:io_error, msg()}
+          | {:protocol_error, msg()}
+          | {:invalid_message, msg()}
+          | {:timeout_error, msg()}
+          | {:too_many_oprhaned_stream_ids, msg()}
+          | {:unable_to_alloc_stream_id, msg()}
+          | {:translation_error, TranslationError.t()}
 end

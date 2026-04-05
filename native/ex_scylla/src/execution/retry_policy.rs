@@ -1,5 +1,6 @@
 use rustler::NifUnitEnum;
-use scylla::retry_policy::{DefaultRetryPolicy, FallthroughRetryPolicy, RetryPolicy};
+use scylla::policies::retry::{DefaultRetryPolicy, FallthroughRetryPolicy, RetryPolicy};
+use std::sync::Arc;
 
 #[derive(NifUnitEnum)]
 pub enum ScyllaRetryPolicy {
@@ -7,11 +8,11 @@ pub enum ScyllaRetryPolicy {
     FallthroughRetryPolicy,
 }
 
-impl Into<Box<dyn RetryPolicy>> for ScyllaRetryPolicy {
-    fn into(self) -> Box<dyn RetryPolicy> {
-        match self {
-            Self::DefaultRetryPolicy => Box::new(DefaultRetryPolicy::default()),
-            Self::FallthroughRetryPolicy => Box::new(FallthroughRetryPolicy::default()),
+impl From<ScyllaRetryPolicy> for Arc<dyn RetryPolicy> {
+    fn from(val: ScyllaRetryPolicy) -> Self {
+        match val {
+            ScyllaRetryPolicy::DefaultRetryPolicy => Arc::new(DefaultRetryPolicy),
+            ScyllaRetryPolicy::FallthroughRetryPolicy => Arc::new(FallthroughRetryPolicy),
         }
     }
 }

@@ -1,51 +1,163 @@
-use crate::errors::ScyllaError;
 use crate::prepared_statement::types::PreparedStatementResource;
 use crate::query::types::QueryResource;
 use crate::utils::*;
 use bigdecimal::BigDecimal;
-use chrono;
 use num_bigint::BigInt;
-use rustler::types::Atom;
 use rustler::{
-    Binary, Decoder, Encoder, Env, Error, NewBinary, NifResult, NifStruct, NifTaggedEnum, NifTuple,
+    Binary, Decoder, Encoder, Env, NewBinary, NifResult, NifStruct, NifTaggedEnum, NifTuple,
     NifUntaggedEnum, ResourceArc, Term,
 };
-use rustler_bigint::BigInt as RustlerBigInt;
-use scylla::batch::BatchStatement;
-use scylla::frame::response::result::{ColumnSpec, ColumnType, CqlValue, Row};
-use scylla::frame::value::Counter;
-use scylla::frame::value::CqlDuration;
-use scylla::query::Query;
-use scylla::QueryResult;
-use scylla::Session;
-use scylla::routing::Token;
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::io::Write;
-use std::net::IpAddr;
-use std::net::Ipv4Addr;
-use std::net::Ipv6Addr;
-use std::ops::Deref;
+use scylla::client::session::Session;
+use scylla::response::query_result::QueryResult;
+use scylla::statement::unprepared::Statement as Query;
+use scylla::value::{Counter, CqlDuration, CqlValue};
+use scylla_cql::frame::response::result::{CollectionType, ColumnSpec, ColumnType, NativeType};
 use std::str::FromStr;
-use uuid::{Bytes, Uuid};
 
-pub struct SessionResource(pub Session);
-
-#[derive(NifUntaggedEnum)]
-pub enum ScyllaBatchStatement {
-    String(String),
-    QueryResource(ResourceArc<QueryResource>),
-    PreparedStatement(ResourceArc<PreparedStatementResource>),
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.Metrics"]
+pub struct ScyllaMetrics {
+    pub errors_num: u64,
+    pub queries_num: u64,
+    pub errors_iter_num: u64,
+    pub queries_iter_num: u64,
+    pub retries_num: u64,
+    pub mean_rate: f64,
+    pub one_minute_rate: f64,
+    pub five_minute_rate: f64,
+    pub fifteen_minute_rate: f64,
+    pub total_connections: u64,
+    pub connection_timeouts: u64,
+    pub request_timeouts: u64,
+    pub latency_avg_ms: Option<u64>,
+    pub latency_99_percentile_ms: Option<u64>,
 }
 
-impl Into<BatchStatement> for ScyllaBatchStatement {
-    fn into(self) -> BatchStatement {
-        match self {
-            Self::String(q) => q.as_str().into(),
-            Self::QueryResource(q) => q.0.to_owned().into(),
-            Self::PreparedStatement(ps) => ps.0.to_owned().into(),
+impl From<&scylla::observability::metrics::Metrics> for ScyllaMetrics {
+    fn from(m: &scylla::observability::metrics::Metrics) -> Self {
+        ScyllaMetrics {
+            errors_num: m.get_errors_num(),
+            queries_num: m.get_queries_num(),
+            errors_iter_num: m.get_errors_iter_num(),
+            queries_iter_num: m.get_queries_iter_num(),
+            retries_num: m.get_retries_num(),
+            mean_rate: m.get_mean_rate(),
+            one_minute_rate: m.get_one_minute_rate(),
+            five_minute_rate: m.get_five_minute_rate(),
+            fifteen_minute_rate: m.get_fifteen_minute_rate(),
+            total_connections: m.get_total_connections(),
+            connection_timeouts: m.get_connection_timeouts(),
+            request_timeouts: m.get_request_timeouts(),
+            latency_avg_ms: m.get_latency_avg_ms().ok(),
+            latency_99_percentile_ms: m.get_latency_percentile_ms(99.0).ok(),
         }
     }
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.TracingEvent"]
+pub struct ScyllaTracingEvent {
+    pub event_id: ScyllaBinary,
+    pub activity: Option<String>,
+    pub source: Option<ScyllaIpAddr>,
+    pub source_elapsed: Option<i32>,
+    pub thread: Option<String>,
+}
+
+impl From<scylla::observability::tracing::TracingEvent> for ScyllaTracingEvent {
+    fn from(te: scylla::observability::tracing::TracingEvent) -> Self {
+        ScyllaTracingEvent {
+            event_id: ScyllaBinary(te.event_id.as_bytes().to_vec()),
+            activity: te.activity,
+            source: te.source.map(|s| s.into()),
+            source_elapsed: te.source_elapsed,
+            thread: te.thread,
+        }
+    }
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.TracingInfo"]
+pub struct ScyllaTracingInfo {
+    pub client: Option<ScyllaIpAddr>,
+    pub command: Option<String>,
+    pub coordinator: Option<ScyllaIpAddr>,
+    pub duration: Option<i32>,
+    pub parameters: Option<std::collections::HashMap<String, String>>,
+    pub request: Option<String>,
+    pub started_at: Option<i64>,
+    pub events: Vec<ScyllaTracingEvent>,
+}
+
+impl From<scylla::observability::tracing::TracingInfo> for ScyllaTracingInfo {
+    fn from(ti: scylla::observability::tracing::TracingInfo) -> Self {
+        ScyllaTracingInfo {
+            client: ti.client.map(|c| c.into()),
+            command: ti.command,
+            coordinator: ti.coordinator.map(|c| c.into()),
+            duration: ti.duration,
+            parameters: ti.parameters,
+            request: ti.request,
+            started_at: ti.started_at.map(|s| s.0),
+            events: ti.events.into_iter().map(|e| e.into()).collect(),
+        }
+    }
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.NodeInfo"]
+pub struct ScyllaNodeInfo {
+    pub host_id: ScyllaBinary,
+    pub address: ScyllaSocketAddr,
+    pub datacenter: Option<String>,
+    pub rack: Option<String>,
+}
+
+impl From<&scylla::cluster::Node> for ScyllaNodeInfo {
+    fn from(node: &scylla::cluster::Node) -> Self {
+        ScyllaNodeInfo {
+            host_id: ScyllaBinary(node.host_id.as_bytes().to_vec()),
+            address: ScyllaSocketAddr {
+                addr: node.address.ip().into(),
+                port: node.address.port(),
+            },
+            datacenter: node.datacenter.clone(),
+            rack: node.rack.clone(),
+        }
+    }
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.ClusterState"]
+pub struct ScyllaClusterState {
+    pub nodes: Vec<ScyllaNodeInfo>,
+    pub keyspaces: Vec<String>,
+}
+
+impl From<&scylla::cluster::ClusterState> for ScyllaClusterState {
+    fn from(cs: &scylla::cluster::ClusterState) -> Self {
+        ScyllaClusterState {
+            nodes: cs.get_nodes_info().iter().map(|n| (&**n).into()).collect(),
+            keyspaces: cs.keyspaces_iter().map(|(k, _)| k.to_string()).collect(),
+        }
+    }
+}
+
+pub struct SessionResource(pub Session);
+impl std::panic::RefUnwindSafe for SessionResource {}
+
+pub struct ScyllaRawRowsResource(pub bytes::Bytes);
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.QueryResult"]
+pub struct ScyllaQueryResult<'a> {
+    pub rows: Option<Term<'a>>,
+    pub rows_count: Option<usize>,
+    pub column_types: Vec<ScyllaColumnType>,
+    pub warnings: Vec<String>,
+    pub tracing_id: Option<ScyllaBinary>,
+    pub paging_state: Option<ScyllaBinary>,
+    pub serialized_size: usize,
 }
 
 #[derive(NifStruct, Debug)]
@@ -54,9 +166,9 @@ pub struct ScyllaToken {
     pub value: i64,
 }
 
-impl From<Token> for ScyllaToken {
-    fn from(t: Token) -> Self {
-        ScyllaToken { value: t.value }
+impl From<scylla::routing::Token> for ScyllaToken {
+    fn from(t: scylla::routing::Token) -> Self {
+        ScyllaToken { value: t.value() }
     }
 }
 
@@ -66,175 +178,360 @@ pub enum ScyllaQuery {
     QueryResource(ResourceArc<QueryResource>),
 }
 
-impl Into<Query> for ScyllaQuery {
-    fn into(self) -> Query {
-        match self {
-            Self::String(q) => q.into(),
-            Self::QueryResource(q) => q.0.to_owned().into(),
+impl From<ScyllaQuery> for Query {
+    fn from(val: ScyllaQuery) -> Self {
+        match val {
+            ScyllaQuery::String(q) => q.into(),
+            ScyllaQuery::QueryResource(q) => q.0.to_owned(),
         }
     }
 }
 
-pub struct ScyllaPageState(scylla::Bytes);
-impl<'a> Encoder for ScyllaPageState {
+impl<'a> ScyllaQueryResult<'a> {
+    pub fn new(env: Env<'a>, qr: QueryResult) -> Self {
+        let warnings = qr.warnings().map(|s| s.to_string()).collect();
+        let tracing_id = qr
+            .tracing_id()
+            .map(|id| ScyllaBinary(id.as_bytes().to_vec()));
+
+        match qr.into_rows_result() {
+            Ok(rows_res) => {
+                let column_types: Vec<ScyllaColumnType> = rows_res
+                    .column_specs()
+                    .iter()
+                    .map(|cs| cs.typ().clone().into())
+                    .collect();
+
+                let rows_count = rows_res.raw_rows_with_metadata().rows_count();
+                let raw_rows_bytes = rows_res.raw_rows_with_metadata().raw_rows().clone();
+                let res_arc = rustler::ResourceArc::new(ScyllaRawRowsResource(raw_rows_bytes));
+                let rows = Some(res_arc.make_binary(env, |r| r.0.as_ref()).to_term(env));
+
+                ScyllaQueryResult {
+                    rows,
+                    rows_count: Some(rows_count),
+                    column_types,
+                    warnings,
+                    tracing_id,
+                    paging_state: None,
+                    serialized_size: 0,
+                }
+            }
+            Err(_) => ScyllaQueryResult {
+                rows: None,
+                rows_count: None,
+                column_types: Vec::new(),
+                warnings,
+                tracing_id,
+                paging_state: None,
+                serialized_size: 0,
+            },
+        }
+    }
+}
+
+#[derive(Debug, NifTaggedEnum)]
+pub enum ScyllaValue {
+    Ascii(String),
+    Boolean(bool),
+    Blob(ScyllaBinary),
+    Counter(i64),
+    Decimal(String),
+    Date(u32),
+    Double(f64),
+    Duration(ScyllaCqlDuration),
+    Empty,
+    Float(f32),
+    Int(i32),
+    BigInt(i64),
+    Text(String),
+    Timestamp(i64),
+    Inet(ScyllaIpAddr),
+    List(Vec<ScyllaValue>),
+    Map(Vec<(ScyllaValue, ScyllaValue)>),
+    Set(Vec<ScyllaValue>),
+    UserDefinedType(ScyllaUserDefinedType),
+    SmallInt(i16),
+    TinyInt(i8),
+    Time(u64),
+    Timeuuid(ScyllaBinary),
+    Tuple(Vec<Option<ScyllaValue>>),
+    Uuid(ScyllaBinary),
+    Varint(String),
+}
+
+impl std::convert::TryFrom<CqlValue> for ScyllaValue {
+    type Error = rustler::Error;
+
+    fn try_from(cv: CqlValue) -> Result<Self, Self::Error> {
+        Ok(match cv {
+            CqlValue::Ascii(ascii) => ScyllaValue::Ascii(ascii),
+            CqlValue::Boolean(bool) => ScyllaValue::Boolean(bool),
+            CqlValue::Blob(blob) => ScyllaValue::Blob(ScyllaBinary(blob)),
+            CqlValue::Counter(counter) => ScyllaValue::Counter(counter.0),
+            CqlValue::Decimal(decimal) => {
+                let (bi, scale) = decimal.into_signed_be_bytes_and_exponent();
+                let bd = BigDecimal::from((BigInt::from_signed_bytes_be(&bi), scale as i64));
+                ScyllaValue::Decimal(bd.to_string())
+            }
+            CqlValue::Date(date) => ScyllaValue::Date(date.0),
+            CqlValue::Double(f64) => ScyllaValue::Double(f64),
+            CqlValue::Duration(duration) => ScyllaValue::Duration(ScyllaCqlDuration {
+                months: duration.months,
+                days: duration.days,
+                nanoseconds: duration.nanoseconds,
+            }),
+            CqlValue::Empty => ScyllaValue::Empty,
+            CqlValue::Float(f32) => ScyllaValue::Float(f32),
+            CqlValue::Int(i32) => ScyllaValue::Int(i32),
+            CqlValue::BigInt(i64) => ScyllaValue::BigInt(i64),
+            CqlValue::Text(text) => ScyllaValue::Text(text),
+            CqlValue::Timestamp(d) => ScyllaValue::Timestamp(d.0),
+            CqlValue::Inet(ipaddr) => ScyllaValue::Inet(ipaddr.into()),
+            CqlValue::List(v) => ScyllaValue::List(
+                v.into_iter()
+                    .map(|cv| cv.try_into())
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
+            ),
+            CqlValue::Map(v) => ScyllaValue::Map(
+                v.into_iter()
+                    .map(|(k, v)| Ok::<_, rustler::Error>((k.try_into()?, v.try_into()?)))
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
+            ),
+            CqlValue::Set(v) => ScyllaValue::Set(
+                v.into_iter()
+                    .map(|cv| cv.try_into())
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
+            ),
+            CqlValue::UserDefinedType {
+                keyspace,
+                name,
+                fields,
+                ..
+            } => ScyllaValue::UserDefinedType(ScyllaUserDefinedType {
+                keyspace,
+                type_name: name,
+                fields: fields
+                    .into_iter()
+                    .map(|(f, v)| {
+                        Ok::<_, rustler::Error>((
+                            f,
+                            match v {
+                                Some(v) => Some(v.try_into()?),
+                                None => None,
+                            },
+                        ))
+                    })
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
+            }),
+            CqlValue::SmallInt(i16) => ScyllaValue::SmallInt(i16),
+            CqlValue::TinyInt(i8) => ScyllaValue::TinyInt(i8),
+            CqlValue::Time(d) => ScyllaValue::Time(d.0 as u64),
+            CqlValue::Timeuuid(uuid) => {
+                ScyllaValue::Timeuuid(ScyllaBinary(uuid.as_bytes().to_vec()))
+            }
+            CqlValue::Tuple(t) => ScyllaValue::Tuple(
+                t.into_iter()
+                    .map(|v| match v {
+                        Some(val) => Ok::<_, rustler::Error>(Some(val.try_into()?)),
+                        None => Ok(None),
+                    })
+                    .collect::<Result<Vec<_>, rustler::Error>>()?,
+            ),
+            CqlValue::Uuid(uuid) => ScyllaValue::Uuid(ScyllaBinary(uuid.as_bytes().to_vec())),
+            CqlValue::Varint(varint) => {
+                let bi = BigInt::from_signed_bytes_be(&varint.into_signed_bytes_be());
+                ScyllaValue::Varint(bi.to_string())
+            }
+            _ => return Err(rustler::Error::Term(Box::new("unsupported_cql_value"))),
+        })
+    }
+}
+
+impl From<ScyllaValue> for CqlValue {
+    fn from(val: ScyllaValue) -> Self {
+        match val {
+            ScyllaValue::Ascii(s) => CqlValue::Ascii(s),
+            ScyllaValue::Boolean(b) => CqlValue::Boolean(b),
+            ScyllaValue::Blob(b) => CqlValue::Blob(b.0),
+            ScyllaValue::Counter(c) => CqlValue::Counter(Counter(c)),
+            ScyllaValue::Decimal(decimal) => BigDecimal::from_str(&decimal)
+                .map(|bd| {
+                    let (bi, scale) = bd.into_bigint_and_exponent();
+                    CqlValue::Decimal(
+                        scylla::value::CqlDecimal::from_signed_be_bytes_and_exponent(
+                            bi.to_signed_bytes_be(),
+                            scale as i32,
+                        ),
+                    )
+                })
+                .unwrap_or(CqlValue::Empty),
+            ScyllaValue::Date(u32) => CqlValue::Date(scylla::value::CqlDate(u32)),
+            ScyllaValue::Double(f64) => CqlValue::Double(f64),
+            ScyllaValue::Duration(cd) => CqlValue::Duration(CqlDuration {
+                months: cd.months,
+                days: cd.days,
+                nanoseconds: cd.nanoseconds,
+            }),
+            ScyllaValue::Empty => CqlValue::Empty,
+            ScyllaValue::Float(f32) => CqlValue::Float(f32),
+            ScyllaValue::Int(i32) => CqlValue::Int(i32),
+            ScyllaValue::BigInt(i64) => CqlValue::BigInt(i64),
+            ScyllaValue::Text(text) => CqlValue::Text(text),
+            ScyllaValue::Timestamp(i64) => CqlValue::Timestamp(scylla::value::CqlTimestamp(i64)),
+            ScyllaValue::Inet(ipaddr) => {
+                let ip: std::net::IpAddr = match ipaddr {
+                    ScyllaIpAddr::IPv4(v4) => {
+                        std::net::IpAddr::V4(std::net::Ipv4Addr::new(v4.0, v4.1, v4.2, v4.3))
+                    }
+                    ScyllaIpAddr::IPv6(v6) => std::net::IpAddr::V6(std::net::Ipv6Addr::new(
+                        v6.0, v6.1, v6.2, v6.3, v6.4, v6.5, v6.6, v6.7,
+                    )),
+                };
+                CqlValue::Inet(ip)
+            }
+            ScyllaValue::List(v) => {
+                let values = v.into_iter().map(|sv| sv.into()).collect();
+                CqlValue::List(values)
+            }
+            ScyllaValue::Map(v) => {
+                let values = v.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
+                CqlValue::Map(values)
+            }
+            ScyllaValue::Set(v) => {
+                let values = v.into_iter().map(|sv| sv.into()).collect();
+                CqlValue::Set(values)
+            }
+            ScyllaValue::UserDefinedType(sudt) => {
+                let fields = sudt
+                    .fields
+                    .into_iter()
+                    .map(|(t, v)| (t, v.map(|v| v.into())))
+                    .collect();
+                CqlValue::UserDefinedType {
+                    keyspace: sudt.keyspace,
+                    name: sudt.type_name,
+                    fields,
+                }
+            }
+            ScyllaValue::SmallInt(i16) => CqlValue::SmallInt(i16),
+            ScyllaValue::TinyInt(i8) => CqlValue::TinyInt(i8),
+            ScyllaValue::Time(u64) => CqlValue::Time(scylla::value::CqlTime(u64 as i64)),
+            ScyllaValue::Timeuuid(u) => {
+                if u.0.len() == 16 {
+                    let mut slice: [u8; 16] = Default::default();
+                    slice.copy_from_slice(u.0.as_slice());
+                    CqlValue::Timeuuid(uuid::Uuid::from_bytes(slice).into())
+                } else {
+                    CqlValue::Empty
+                }
+            }
+            ScyllaValue::Tuple(v) => {
+                let values = v.into_iter().map(|sv| sv.map(|sv| sv.into())).collect();
+                CqlValue::Tuple(values)
+            }
+            ScyllaValue::Uuid(u) => {
+                if u.0.len() == 16 {
+                    let mut slice: [u8; 16] = Default::default();
+                    slice.copy_from_slice(u.0.as_slice());
+                    CqlValue::Uuid(uuid::Uuid::from_bytes(slice))
+                } else {
+                    CqlValue::Empty
+                }
+            }
+            ScyllaValue::Varint(varint) => BigInt::from_str(&varint)
+                .map(|bi| {
+                    CqlValue::Varint(scylla::value::CqlVarint::from_signed_bytes_be(
+                        bi.to_signed_bytes_be(),
+                    ))
+                })
+                .unwrap_or(CqlValue::Empty),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ScyllaBinary(pub Vec<u8>);
+impl From<Vec<u8>> for ScyllaBinary {
+    fn from(v: Vec<u8>) -> Self {
+        ScyllaBinary(v)
+    }
+}
+impl From<bytes::Bytes> for ScyllaBinary {
+    fn from(v: bytes::Bytes) -> Self {
+        ScyllaBinary(v.to_vec())
+    }
+}
+impl From<uuid::Uuid> for ScyllaBinary {
+    fn from(u: uuid::Uuid) -> Self {
+        ScyllaBinary(u.as_bytes().to_vec())
+    }
+}
+impl<'a> Encoder for ScyllaBinary {
     fn encode<'b>(&self, env: Env<'b>) -> Term<'b> {
         let mut nb = NewBinary::new(env, self.0.len());
-        nb.as_mut_slice().write_all(&self.0).unwrap();
+        nb.as_mut_slice().copy_from_slice(&self.0);
+        nb.into()
+    }
+}
+impl<'a> Decoder<'a> for ScyllaBinary {
+    fn decode(term: Term<'a>) -> NifResult<Self> {
+        let b: Binary<'a> = term.decode()?;
+        Ok(ScyllaBinary(b.as_slice().to_vec()))
+    }
+}
+
+impl ToElixir<String> for String {
+    fn ex(self) -> String {
+        self
+    }
+}
+
+pub struct ScyllaUuid(pub uuid::Uuid);
+impl Encoder for ScyllaUuid {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        let bytes = self.0.as_bytes();
+        let mut nb = NewBinary::new(env, bytes.len());
+        nb.as_mut_slice().copy_from_slice(bytes);
+        nb.into()
+    }
+}
+impl ToElixir<ScyllaUuid> for uuid::Uuid {
+    fn ex(self) -> ScyllaUuid {
+        ScyllaUuid(self)
+    }
+}
+
+pub struct ScyllaPageState(pub scylla::response::PagingState);
+impl Encoder for ScyllaPageState {
+    fn encode<'b>(&self, env: Env<'b>) -> Term<'b> {
+        let bytes = self.0.as_bytes_slice().map(|arc| &**arc).unwrap_or(&[]);
+        let mut nb = NewBinary::new(env, bytes.len());
+        nb.as_mut_slice().copy_from_slice(bytes);
         nb.into()
     }
 }
 impl<'a> Decoder<'a> for ScyllaPageState {
     fn decode(term: Term<'a>) -> NifResult<Self> {
         let c: Binary<'a> = term.decode()?;
-        Ok(ScyllaPageState(scylla::Bytes::from(c.to_vec())))
-    }
-}
-#[derive(Debug)]
-pub struct ScyllaBinary(Vec<u8>);
-impl Deref for ScyllaBinary {
-    type Target = Vec<u8>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl<'a> Encoder for ScyllaBinary {
-    fn encode<'b>(&self, env: Env<'b>) -> Term<'b> {
-        let mut nb = NewBinary::new(env, self.0.len());
-        nb.as_mut_slice().write_all(&self.0).unwrap();
-        nb.into()
-    }
-}
-impl<'a> Decoder<'a> for ScyllaBinary {
-    fn decode(term: Term<'a>) -> NifResult<Self> {
-        let c: Binary<'a> = term.decode()?;
-        Ok(ScyllaBinary(c.to_vec()))
-    }
-}
-impl From<Vec<u8>> for ScyllaBinary {
-    fn from(v: Vec<u8>) -> Self {
-        ScyllaBinary(v)
-    }
-}
-impl From<scylla::Bytes> for ScyllaBinary {
-    fn from(v: scylla::Bytes) -> Self {
-        ScyllaBinary(v.to_vec())
-    }
-}
-impl From<uuid::Uuid> for ScyllaBinary {
-    fn from(v: uuid::Uuid) -> Self {
-        ScyllaBinary(v.as_bytes().to_vec())
+        Ok(ScyllaPageState(
+            scylla::response::PagingState::new_from_raw_bytes(c.to_vec()),
+        ))
     }
 }
 
-impl ToRust<Option<scylla::Bytes>> for Option<ScyllaPageState> {
-    fn r(self) -> Option<scylla::Bytes> {
+impl ToRust<Option<scylla::response::PagingState>> for Option<ScyllaPageState> {
+    fn r(self) -> Option<scylla::response::PagingState> {
         self.map(|s| s.0)
     }
 }
-pub struct ScyllaUuuid(Uuid);
-impl<'a> Encoder for ScyllaUuuid {
-    fn encode<'b>(&self, env: Env<'b>) -> Term<'b> {
-        let sb: ScyllaBinary = self.0.into();
-        sb.encode(env)
-    }
-}
-impl<'a> Decoder<'a> for ScyllaUuuid {
-    fn decode(term: Term<'a>) -> NifResult<Self> {
-        let c: ScyllaBinary = term.decode()?;
-        let bytes: Bytes =
-            c.0.try_into()
-                .map_err(|_| ScyllaError::parse("Invalid byte size for uuid"))?;
-        Ok(ScyllaUuuid(Uuid::from_bytes(bytes)))
-    }
-}
 
-to_elixir!(Uuid, ScyllaUuuid, |uuid: Uuid| { ScyllaUuuid(uuid) });
-
-to_elixir!(Session, ResourceArc<SessionResource>, |session| {
-    ResourceArc::new(SessionResource(session))
-});
-
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.QueryResult"]
-pub struct ScyllaQueryResult {
-    pub rows: Option<Vec<ScyllaRow>>,
-    pub warnings: Vec<String>,
-    pub tracing_id: Option<ScyllaBinary>,
-    pub paging_state: Option<ScyllaBinary>,
-    //pub col_specs: Option<Vec<ScyllaColumnSpec>>,
-    pub serialized_size: usize,
-}
-
-to_elixir!(QueryResult, ScyllaQueryResult, |qr: QueryResult| {
-    ScyllaQueryResult {
-        rows: qr
-            .rows
-            .map(|rows| rows.into_iter().map(|row| row.ex()).collect()),
-        warnings: qr.warnings,
-        tracing_id: qr.tracing_id.map(|b| b.into()),
-        paging_state: qr.paging_state.map(|b| b.into()),
-        // colspecs has a huge overhead for each query, this probably needs to be cached in order to be performant.
-        //col_specs: Some(qr.col_specs.into_iter().map(|x| x.ex()).collect()),
-        serialized_size: qr.serialized_size
-    }
-});
-
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.ColumnSpec"]
-pub struct ScyllaColumnSpec {
-    pub table_spec: ScyllaTableSpec,
-    pub name: String,
-    pub typ: ScyllaColumnType,
-}
-
-to_elixir!(ColumnSpec, ScyllaColumnSpec, |qs: ColumnSpec| {
-    ScyllaColumnSpec {
-        table_spec: ScyllaTableSpec {
-            ks_name: qs.table_spec.ks_name,
-            table_name: qs.table_spec.table_name,
-        },
-        name: qs.name,
-        typ: qs.typ.into(),
-    }
-});
-
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.TableSpec"]
-pub struct ScyllaTableSpec {
-    pub ks_name: String,
-    pub table_name: String,
-}
-
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.BigDecimal"]
-pub struct ScyllaBigDecimal {
-    pub int_val: RustlerBigInt,
-    // A positive scale means a negative power of 10
-    pub scale: i64,
-}
 #[derive(NifStruct, Debug)]
 #[module = "ExScylla.Types.CqlDuration"]
 pub struct ScyllaCqlDuration {
     pub months: i32,
     pub days: i32,
     pub nanoseconds: i64,
-}
-impl From<CqlDuration> for ScyllaCqlDuration {
-    fn from(cd: CqlDuration) -> Self {
-        ScyllaCqlDuration {
-            months: cd.months,
-            days: cd.days,
-            nanoseconds: cd.nanoseconds,
-        }
-    }
-}
-
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.Duration"]
-pub struct ScyllaDuration {
-    secs: i64,
-    nanos: u32, // Always 0 <= nanos < NANOS_PER_SEC
 }
 
 #[derive(Debug, NifUntaggedEnum)]
@@ -247,14 +544,14 @@ pub struct IPv6(u16, u16, u16, u16, u16, u16, u16, u16);
 #[derive(Debug, NifTuple)]
 pub struct IPv4(u8, u8, u8, u8);
 
-impl From<IpAddr> for ScyllaIpAddr {
-    fn from(ia: IpAddr) -> Self {
+impl From<std::net::IpAddr> for ScyllaIpAddr {
+    fn from(ia: std::net::IpAddr) -> Self {
         match ia {
-            IpAddr::V4(v4) => {
+            std::net::IpAddr::V4(v4) => {
                 let [a, b, c, d] = v4.octets();
                 ScyllaIpAddr::IPv4(IPv4(a, b, c, d))
             }
-            IpAddr::V6(v6) => {
+            std::net::IpAddr::V6(v6) => {
                 let [a, b, c, d, e, f, g, h] = v6.segments();
                 ScyllaIpAddr::IPv6(IPv6(a, b, c, d, e, f, g, h))
             }
@@ -262,338 +559,105 @@ impl From<IpAddr> for ScyllaIpAddr {
     }
 }
 
-impl From<ScyllaIpAddr> for IpAddr {
-    fn from(sia: ScyllaIpAddr) -> Self {
-        match sia {
-            ScyllaIpAddr::IPv4(v4) => IpAddr::V4(Ipv4Addr::new(v4.0, v4.1, v4.2, v4.3)),
-            ScyllaIpAddr::IPv6(v6) => IpAddr::V6(Ipv6Addr::new(
-                v6.0, v6.1, v6.2, v6.3, v6.4, v6.5, v6.6, v6.7,
-            )),
-        }
-    }
+#[derive(Debug, NifTuple)]
+pub struct ScyllaSocketAddr {
+    pub addr: ScyllaIpAddr,
+    pub port: u16,
 }
 
-#[derive(Debug, NifTaggedEnum)]
-pub enum ScyllaValue {
-    Ascii(String),
-    Boolean(bool),
-    Blob(ScyllaBinary),
-    Counter(i64),
-    Decimal(String),
-    /// Days since -5877641-06-23 i.e. 2^31 days before unix epoch
-    /// Can be converted to chrono::NaiveDate (-262145-1-1 to 262143-12-31) using as_date
-    Date(u32),
-    Double(f64),
-    Duration(ScyllaCqlDuration),
-    Empty,
-    Float(f32),
-    Int(i32),
-    BigInt(i64),
-    Text(String),
-    /// Milliseconds since unix epoch
-    Timestamp(i64),
-    Inet(ScyllaIpAddr),
-    List(Vec<ScyllaValue>),
-    Map(Vec<(ScyllaValue, ScyllaValue)>),
-    Set(Vec<ScyllaValue>),
-    UserDefinedType(ScyllaUserDefinedType),
-    SmallInt(i16),
-    TinyInt(i8),
-    /// Nanoseconds since midnight
-    Time(u64),
-    Timeuuid(ScyllaBinary),
-    Tuple(Vec<Option<ScyllaValue>>),
-    Uuid(ScyllaBinary),
-    Varint(String),
-}
-
-impl TryFrom<ScyllaValue> for CqlValue {
-    type Error = ScyllaError;
-    fn try_from(sv: ScyllaValue) -> Result<Self, ScyllaError> {
-        match sv {
-            ScyllaValue::Ascii(str) => Ok(CqlValue::Ascii(str)),
-            ScyllaValue::Boolean(bool) => Ok(CqlValue::Boolean(bool)),
-            ScyllaValue::Blob(blob) => Ok(CqlValue::Blob(blob.0)),
-            ScyllaValue::Counter(i64) => Ok(CqlValue::Counter(Counter(i64))),
-            ScyllaValue::Decimal(decimal) => {
-                let bd = BigDecimal::from_str(&decimal)
-                    .map_err(|_| ScyllaError::parse("Failed to parse decimal"))?;
-                Ok(CqlValue::Decimal(bd))
-            }
-            ScyllaValue::Date(u32) => Ok(CqlValue::Date(u32)),
-            ScyllaValue::Double(f64) => Ok(CqlValue::Double(f64)),
-            ScyllaValue::Duration(cd) => Ok(CqlValue::Duration(CqlDuration {
-                months: cd.months,
-                days: cd.days,
-                nanoseconds: cd.nanoseconds,
-            })),
-            ScyllaValue::Empty => Ok(CqlValue::Empty),
-            ScyllaValue::Float(f32) => Ok(CqlValue::Float(f32)),
-            ScyllaValue::Int(i32) => Ok(CqlValue::Int(i32)),
-            ScyllaValue::BigInt(i64) => Ok(CqlValue::BigInt(i64)),
-            ScyllaValue::Text(text) => Ok(CqlValue::Text(text)),
-            ScyllaValue::Timestamp(i64) => {
-                Ok(CqlValue::Timestamp(chrono::Duration::milliseconds(i64)))
-            }
-            ScyllaValue::Inet(ipaddr) => {
-                let ip: IpAddr = match ipaddr {
-                    ScyllaIpAddr::IPv4(v4) => IpAddr::V4(Ipv4Addr::new(v4.0, v4.1, v4.2, v4.3)),
-                    ScyllaIpAddr::IPv6(v6) => IpAddr::V6(Ipv6Addr::new(
-                        v6.0, v6.1, v6.2, v6.3, v6.4, v6.5, v6.6, v6.7,
-                    )),
-                };
-                Ok(CqlValue::Inet(ip))
-            }
-            ScyllaValue::List(v) => {
-                let values = v
-                    .into_iter()
-                    .map(|sv| sv.try_into())
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(CqlValue::List(values))
-            }
-            ScyllaValue::Map(v) => {
-                let values = v
-                    .into_iter()
-                    .map(|(k, v)| {
-                        let kcv: Result<CqlValue, _> = k.try_into();
-                        let vcv: Result<CqlValue, _> = v.try_into();
-                        match (kcv, vcv) {
-                            (Ok(kcv), Ok(vcv)) => Ok((kcv, vcv)),
-                            (Err(err), _) => Err(err),
-                            (_, Err(err)) => Err(err),
-                        }
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(CqlValue::Map(values))
-            }
-            ScyllaValue::Set(v) => {
-                let values = v
-                    .into_iter()
-                    .map(|sv| sv.try_into())
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(CqlValue::Set(values))
-            }
-            ScyllaValue::UserDefinedType(sudt) => {
-                let fields = sudt
-                    .fields
-                    .into_iter()
-                    .map(|(t, v)| {
-                        let v: Result<Option<CqlValue>, _> = v.map(|sv| sv.try_into()).transpose();
-                        match v {
-                            Ok(v) => Ok((t, v)),
-                            Err(err) => Err(err),
-                        }
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(CqlValue::UserDefinedType {
-                    keyspace: sudt.keyspace,
-                    type_name: sudt.type_name,
-                    fields,
-                })
-            }
-            ScyllaValue::SmallInt(i16) => Ok(CqlValue::SmallInt(i16)),
-            ScyllaValue::TinyInt(i8) => Ok(CqlValue::TinyInt(i8)),
-            ScyllaValue::Time(u64) => Ok(CqlValue::Time(chrono::Duration::milliseconds(
-                u64.try_into().unwrap(),
-            ))),
-            ScyllaValue::Timeuuid(u) => {
-                if u.len() == 16 {
-                    let mut slice: [u8; 16] = Default::default();
-                    slice.copy_from_slice(u.as_slice());
-                    Ok(CqlValue::Timeuuid(uuid::Uuid::from_bytes(slice)))
-                } else {
-                    Err(ScyllaError::parse("invalid uuid byte length"))
-                }
-            }
-            ScyllaValue::Tuple(v) => {
-                let values = v
-                    .into_iter()
-                    .map(|sv| sv.map(|sv| sv.try_into()).transpose())
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(CqlValue::Tuple(values))
-            }
-            ScyllaValue::Uuid(u) => {
-                if u.len() != 16 {
-                    return Err(ScyllaError::parse("invalid uuid byte length"));
-                }
-                let mut slice: [u8; 16] = Default::default();
-                slice.copy_from_slice(u.as_slice());
-                Ok(CqlValue::Uuid(uuid::Uuid::from_bytes(slice)))
-            }
-            ScyllaValue::Varint(varint) => {
-                let bi = BigInt::from_str(&varint)
-                    .map_err(|_| ScyllaError::parse("unable to parse varint"))?;
-                Ok(CqlValue::Varint(bi))
-            }
-        }
-    }
-}
-
-impl From<CqlValue> for ScyllaValue {
-    fn from(cv: CqlValue) -> Self {
-        match cv {
-            CqlValue::Ascii(ascii) => ScyllaValue::Ascii(ascii),
-            CqlValue::Boolean(bool) => ScyllaValue::Boolean(bool),
-            CqlValue::Blob(blob) => ScyllaValue::Blob(blob.into()),
-            CqlValue::Counter(counter) => ScyllaValue::Counter(counter.0),
-            CqlValue::Decimal(decimal) => ScyllaValue::Decimal(decimal.to_string()),
-            CqlValue::Date(u32) => ScyllaValue::Date(u32),
-            CqlValue::Double(f64) => ScyllaValue::Double(f64),
-            CqlValue::Duration(duration) => ScyllaValue::Duration(duration.into()),
-            CqlValue::Empty => ScyllaValue::Empty,
-            CqlValue::Float(f32) => ScyllaValue::Float(f32),
-            CqlValue::Int(i32) => ScyllaValue::Int(i32),
-            CqlValue::BigInt(i64) => ScyllaValue::BigInt(i64),
-            CqlValue::Text(text) => ScyllaValue::Text(text),
-            CqlValue::Timestamp(d) => ScyllaValue::Timestamp(d.num_milliseconds()),
-            CqlValue::Inet(ipaddr) => ScyllaValue::Inet(ipaddr.into()),
-            CqlValue::List(v) => ScyllaValue::List(v.into_iter().map(|cv| cv.into()).collect()),
-            CqlValue::Map(v) => {
-                ScyllaValue::Map(v.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
-            }
-            CqlValue::Set(v) => ScyllaValue::Set(v.into_iter().map(|cv| cv.into()).collect()),
-            CqlValue::UserDefinedType {
-                keyspace,
-                type_name,
-                fields,
-            } => ScyllaValue::UserDefinedType(ScyllaUserDefinedType {
-                keyspace,
-                type_name,
-                fields: fields
-                    .into_iter()
-                    .map(|(f, v)| (f, v.map(|v| v.into())))
-                    .collect(),
-            }),
-            CqlValue::SmallInt(i16) => ScyllaValue::SmallInt(i16),
-            CqlValue::TinyInt(i8) => ScyllaValue::TinyInt(i8),
-            CqlValue::Time(d) => ScyllaValue::Time(
-                d.num_nanoseconds()
-                    .expect("Nanoseconds since midnight should never overflow")
-                    .try_into()
-                    .unwrap(),
+impl From<ScyllaSocketAddr> for std::net::SocketAddr {
+    fn from(ssa: ScyllaSocketAddr) -> Self {
+        match ssa.addr {
+            ScyllaIpAddr::IPv4(v4) => std::net::SocketAddr::new(
+                std::net::IpAddr::V4(std::net::Ipv4Addr::new(v4.0, v4.1, v4.2, v4.3)),
+                ssa.port,
             ),
-            CqlValue::Timeuuid(uuid) => ScyllaValue::Timeuuid(uuid.into()),
-            CqlValue::Tuple(t) => {
-                ScyllaValue::Tuple(t.into_iter().map(|v| v.map(|v| v.into())).collect())
-            }
-            CqlValue::Uuid(uuid) => ScyllaValue::Uuid(uuid.into()),
-            CqlValue::Varint(varint) => ScyllaValue::Varint(varint.to_string()),
+            ScyllaIpAddr::IPv6(v6) => std::net::SocketAddr::new(
+                std::net::IpAddr::V6(std::net::Ipv6Addr::new(
+                    v6.0, v6.1, v6.2, v6.3, v6.4, v6.5, v6.6, v6.7,
+                )),
+                ssa.port,
+            ),
         }
     }
 }
 
-impl ToRust<Result<Vec<CqlValue>, Error>> for Vec<ScyllaValue> {
-    fn r(self) -> Result<Vec<CqlValue>, Error> {
-        self.into_iter()
-            .map(|sv| sv.try_into())
-            .collect::<Result<Vec<CqlValue>, ScyllaError>>()
-            .map_err(|se| Error::from(se))
-    }
-}
-
-#[derive(Debug, NifTaggedEnum)]
-pub enum ScyllaColumnType {
-    Custom(String),
-    Ascii,
-    Boolean,
-    Blob,
-    Counter,
-    Date,
-    Decimal,
-    Double,
-    Duration,
-    Float,
-    Int,
-    BigInt,
-    Text,
-    Timestamp,
-    Inet,
-    List(Box<ScyllaColumnType>),
-    Map((Box<ScyllaColumnType>, Box<ScyllaColumnType>)),
-    Set(Box<ScyllaColumnType>),
-    UserDefinedType(ScyllaUserDefinedColumnType),
-    SmallInt,
-    TinyInt,
-    Time,
-    Timeuuid,
-    Tuple(Vec<ScyllaColumnType>),
-    Uuid,
-    Varint,
-}
-
-impl From<ColumnType> for ScyllaColumnType {
-    fn from(ct: ColumnType) -> Self {
-        match ct {
-            ColumnType::Custom(str) => ScyllaColumnType::Custom(str),
-            ColumnType::Ascii => ScyllaColumnType::Ascii,
-            ColumnType::Boolean => ScyllaColumnType::Boolean,
-            ColumnType::Blob => ScyllaColumnType::Blob,
-            ColumnType::Counter => ScyllaColumnType::Counter,
-            ColumnType::Date => ScyllaColumnType::Date,
-            ColumnType::Decimal => ScyllaColumnType::Decimal,
-            ColumnType::Double => ScyllaColumnType::Double,
-            ColumnType::Duration => ScyllaColumnType::Duration,
-            ColumnType::Float => ScyllaColumnType::Float,
-            ColumnType::Int => ScyllaColumnType::Int,
-            ColumnType::BigInt => ScyllaColumnType::BigInt,
-            ColumnType::Text => ScyllaColumnType::Text,
-            ColumnType::Timestamp => ScyllaColumnType::Timestamp,
-            ColumnType::Inet => ScyllaColumnType::Inet,
-            ColumnType::List(typ) => ScyllaColumnType::List(Box::new(ScyllaColumnType::from(*typ))),
-            ColumnType::Map(key, val) => ScyllaColumnType::Map((
-                Box::new(ScyllaColumnType::from(*key)),
-                Box::new(ScyllaColumnType::from(*val)),
-            )),
-            ColumnType::Set(typ) => ScyllaColumnType::Set(Box::new(ScyllaColumnType::from(*typ))),
-            ColumnType::UserDefinedType {
-                type_name,
-                keyspace,
-                field_types,
-            } => ScyllaColumnType::UserDefinedType(ScyllaUserDefinedColumnType {
-                type_name,
-                keyspace,
-                field_types: field_types
-                    .into_iter()
-                    .map(|(str, ct)| (str, ct.into()))
-                    .collect(),
-            }),
-            ColumnType::SmallInt => ScyllaColumnType::SmallInt,
-            ColumnType::TinyInt => ScyllaColumnType::TinyInt,
-            ColumnType::Time => ScyllaColumnType::Time,
-            ColumnType::Timeuuid => ScyllaColumnType::Timeuuid,
-            ColumnType::Tuple(vec) => {
-                ScyllaColumnType::Tuple(vec.into_iter().map(|ct| ct.into()).collect())
-            }
-            ColumnType::Uuid => ScyllaColumnType::Uuid,
-            ColumnType::Varint => ScyllaColumnType::Varint,
-        }
-    }
-}
-
-impl Encoder for Box<ScyllaColumnType> {
-    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
-        (**self).encode(env)
-    }
-}
-impl<'a> Decoder<'a> for Box<ScyllaColumnType> {
-    fn decode(term: Term) -> NifResult<Self> {
-        let typ: ScyllaColumnType = term.decode()?;
-        Ok(Box::new(typ))
-    }
-}
-
-#[derive(NifTuple, Debug)]
-pub struct ListColumnType(Atom, ScyllaColumnType);
-#[derive(NifTuple, Debug)]
-pub struct MapColumnType(Atom, ScyllaColumnType, ScyllaColumnType);
-#[derive(NifTuple, Debug)]
-pub struct TupleColumnType(Atom, Vec<ScyllaColumnType>);
 #[derive(NifStruct, Debug)]
 #[module = "ExScylla.Types.UserDefinedType"]
 pub struct ScyllaUserDefinedType {
     pub type_name: String,
     pub keyspace: String,
     pub fields: Vec<(String, Option<ScyllaValue>)>,
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.TableSpec"]
+pub struct ScyllaTableSpec {
+    pub ks_name: String,
+    pub table_name: String,
+}
+
+#[derive(NifStruct, Debug)]
+#[module = "ExScylla.Types.ColumnSpec"]
+pub struct ScyllaColumnSpec {
+    pub table_spec: ScyllaTableSpec,
+    pub name: String,
+    pub typ: ScyllaColumnType,
+}
+
+#[derive(Debug, NifTaggedEnum)]
+pub enum ScyllaColumnType {
+    Custom(String),
+    #[rustler(rename = "ascii")]
+    Ascii,
+    #[rustler(rename = "boolean")]
+    Boolean,
+    #[rustler(rename = "blob")]
+    Blob,
+    #[rustler(rename = "counter")]
+    Counter,
+    #[rustler(rename = "date")]
+    Date,
+    #[rustler(rename = "decimal")]
+    Decimal,
+    #[rustler(rename = "double")]
+    Double,
+    #[rustler(rename = "duration")]
+    Duration,
+    #[rustler(rename = "float")]
+    Float,
+    #[rustler(rename = "int")]
+    Int,
+    #[rustler(rename = "big_int")]
+    BigInt,
+    #[rustler(rename = "text")]
+    Text,
+    #[rustler(rename = "timestamp")]
+    Timestamp,
+    #[rustler(rename = "inet")]
+    Inet,
+    #[rustler(rename = "list")]
+    List(Box<ScyllaColumnType>),
+    #[rustler(rename = "map")]
+    Map((Box<ScyllaColumnType>, Box<ScyllaColumnType>)),
+    #[rustler(rename = "set")]
+    Set(Box<ScyllaColumnType>),
+    #[rustler(rename = "user_defined_type")]
+    UserDefinedType(ScyllaUserDefinedColumnType),
+    #[rustler(rename = "small_int")]
+    SmallInt,
+    #[rustler(rename = "tiny_int")]
+    TinyInt,
+    #[rustler(rename = "time")]
+    Time,
+    #[rustler(rename = "timeuuid")]
+    Timeuuid,
+    #[rustler(rename = "tuple")]
+    Tuple(Vec<ScyllaColumnType>),
+    #[rustler(rename = "uuid")]
+    Uuid,
+    #[rustler(rename = "varint")]
+    Varint,
 }
 
 #[derive(NifStruct, Debug)]
@@ -604,18 +668,100 @@ pub struct ScyllaUserDefinedColumnType {
     pub field_types: Vec<(String, ScyllaColumnType)>,
 }
 
-#[derive(NifStruct, Debug)]
-#[module = "ExScylla.Types.Row"]
-pub struct ScyllaRow {
-    pub columns: Vec<Option<ScyllaValue>>,
+impl From<ColumnType<'_>> for ScyllaColumnType {
+    fn from(ct: ColumnType<'_>) -> Self {
+        match ct {
+            ColumnType::Native(nt) => match nt {
+                NativeType::Ascii => ScyllaColumnType::Ascii,
+                NativeType::Boolean => ScyllaColumnType::Boolean,
+                NativeType::Blob => ScyllaColumnType::Blob,
+                NativeType::Counter => ScyllaColumnType::Counter,
+                NativeType::Date => ScyllaColumnType::Date,
+                NativeType::Decimal => ScyllaColumnType::Decimal,
+                NativeType::Double => ScyllaColumnType::Double,
+                NativeType::Duration => ScyllaColumnType::Duration,
+                NativeType::Float => ScyllaColumnType::Float,
+                NativeType::Int => ScyllaColumnType::Int,
+                NativeType::BigInt => ScyllaColumnType::BigInt,
+                NativeType::Text => ScyllaColumnType::Text,
+                NativeType::Timestamp => ScyllaColumnType::Timestamp,
+                NativeType::Inet => ScyllaColumnType::Inet,
+                NativeType::SmallInt => ScyllaColumnType::SmallInt,
+                NativeType::TinyInt => ScyllaColumnType::TinyInt,
+                NativeType::Time => ScyllaColumnType::Time,
+                NativeType::Timeuuid => ScyllaColumnType::Timeuuid,
+                NativeType::Uuid => ScyllaColumnType::Uuid,
+                NativeType::Varint => ScyllaColumnType::Varint,
+                _ => ScyllaColumnType::Custom(format!("{:?}", nt)),
+            },
+            ColumnType::Collection { typ, .. } => match typ {
+                CollectionType::List(inner) => {
+                    ScyllaColumnType::List(Box::new(ScyllaColumnType::from(*inner)))
+                }
+                CollectionType::Set(inner) => {
+                    ScyllaColumnType::Set(Box::new(ScyllaColumnType::from(*inner)))
+                }
+                CollectionType::Map(k, v) => ScyllaColumnType::Map((
+                    Box::new(ScyllaColumnType::from(*k)),
+                    Box::new(ScyllaColumnType::from(*v)),
+                )),
+                _ => ScyllaColumnType::Custom(format!("{:?}", typ)),
+            },
+            ColumnType::UserDefinedType { definition, .. } => scylla_udt_from_def(&definition),
+            ColumnType::Tuple(vec) => {
+                ScyllaColumnType::Tuple(vec.into_iter().map(|ct| ct.into()).collect())
+            }
+            _ => ScyllaColumnType::Custom("Unknown".to_string()),
+        }
+    }
 }
 
-to_elixir!(Row, ScyllaRow, |r: Row| {
-    ScyllaRow {
-        columns: r
-            .columns
-            .into_iter()
-            .map(|v| v.map(|v| v.into()))
-            .collect::<Vec<_>>(),
+fn scylla_udt_from_def(
+    definition: &scylla_cql::frame::response::result::UserDefinedType,
+) -> ScyllaColumnType {
+    ScyllaColumnType::UserDefinedType(ScyllaUserDefinedColumnType {
+        type_name: definition.name.to_string(),
+        keyspace: definition.keyspace.to_string(),
+        field_types: definition
+            .field_types
+            .iter()
+            .map(|(str, ct)| (str.to_string(), ct.clone().into()))
+            .collect(),
+    })
+}
+
+impl ToElixir<ScyllaColumnSpec> for ColumnSpec<'_> {
+    fn ex(self) -> ScyllaColumnSpec {
+        ScyllaColumnSpec {
+            table_spec: ScyllaTableSpec {
+                ks_name: self.table_spec().ks_name().to_string(),
+                table_name: self.table_spec().table_name().to_string(),
+            },
+            name: self.name().to_string(),
+            typ: self.typ().clone().into(),
+        }
     }
-});
+}
+
+#[derive(NifUntaggedEnum)]
+pub enum ScyllaBatchStatement {
+    String(String),
+    QueryResource(ResourceArc<QueryResource>),
+    PreparedStatement(ResourceArc<PreparedStatementResource>),
+}
+
+impl From<ScyllaBatchStatement> for scylla::statement::batch::BatchStatement {
+    fn from(val: ScyllaBatchStatement) -> Self {
+        match val {
+            ScyllaBatchStatement::String(q) => q.as_str().into(),
+            ScyllaBatchStatement::QueryResource(q) => q.0.to_owned().into(),
+            ScyllaBatchStatement::PreparedStatement(ps) => ps.0.to_owned().into(),
+        }
+    }
+}
+
+impl ToElixir<ResourceArc<SessionResource>> for Session {
+    fn ex(self) -> ResourceArc<SessionResource> {
+        ResourceArc::new(SessionResource(self))
+    }
+}
