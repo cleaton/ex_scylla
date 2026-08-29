@@ -69,7 +69,7 @@ defmodule ExScylla.Session do
     example_setup: :session_setup,
     doc_example: """
     iex> nil = Session.get_keyspace(session)
-    iex> {:ok, _} = Session.query(session, "CREATE KEYSPACE IF NOT EXISTS test_ks WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};", [])
+    iex> {:ok, _} = Session.query(session, "CREATE KEYSPACE IF NOT EXISTS test_ks WITH REPLICATION = {'class': 'NetworkTopologyStrategy', 'replication_factor': 1};", [])
     iex> :ok = Session.use_keyspace(session, "test_ks", false)
     iex> "test_ks" = Session.get_keyspace(session)
     """

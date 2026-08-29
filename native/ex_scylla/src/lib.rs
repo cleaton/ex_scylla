@@ -13,29 +13,19 @@ pub mod utils;
 // Setup
 rustler::init!("Elixir.ExScylla.Native", load = load);
 
-#[allow(non_local_definitions)]
 fn load(env: rustler::Env, _: rustler::Term) -> bool {
     runtime::init();
-    let _ = rustler::resource!(session_builder::types::SessionBuilderResource, env);
-    let _ = rustler::resource!(session::types::SessionResource, env);
-    let _ = rustler::resource!(session::types::ScyllaRawRowsResource, env);
-    let _ = rustler::resource!(batch::types::BatchResource, env);
-    let _ = rustler::resource!(prepared_statement::types::PreparedStatementResource, env);
-    let _ = rustler::resource!(query::types::QueryResource, env);
-    let _ = rustler::resource!(
-        execution::execution_profile_builder::ExecutionProfileBuilderResource,
-        env
-    );
-    let _ = rustler::resource!(
-        execution::execution_profile_handle::ExecutionProfileHandleResource,
-        env
-    );
-    let _ = rustler::resource!(execution::execution_profile::ExecutionProfileResource, env);
-    let _ = rustler::resource!(execution::load_balancing::DefaultPolicyBuilderResource, env);
-    let _ = rustler::resource!(
-        execution::load_balancing::LatencyAwarenessPolicyBuilderResource,
-        env
-    );
-    let _ = rustler::resource!(execution::load_balancing::LoadBalancingPolicyResource, env);
+    let _ = env.register::<session_builder::types::SessionBuilderResource>();
+    let _ = env.register::<session::types::SessionResource>();
+    let _ = env.register::<session::types::ScyllaRawRowsResource>();
+    let _ = env.register::<batch::types::BatchResource>();
+    let _ = env.register::<prepared_statement::types::PreparedStatementResource>();
+    let _ = env.register::<query::types::QueryResource>();
+    let _ = env.register::<execution::execution_profile_builder::ExecutionProfileBuilderResource>();
+    let _ = env.register::<execution::execution_profile_handle::ExecutionProfileHandleResource>();
+    let _ = env.register::<execution::execution_profile::ExecutionProfileResource>();
+    let _ = env.register::<execution::load_balancing::DefaultPolicyBuilderResource>();
+    let _ = env.register::<execution::load_balancing::LatencyAwarenessPolicyBuilderResource>();
+    let _ = env.register::<execution::load_balancing::LoadBalancingPolicyResource>();
     true
 }

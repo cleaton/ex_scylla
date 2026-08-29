@@ -10,6 +10,7 @@ use super::{
 
 pub struct ExecutionProfileResource(pub ExecutionProfile);
 impl std::panic::RefUnwindSafe for ExecutionProfileResource {}
+impl rustler::Resource for ExecutionProfileResource {}
 
 #[rustler::nif]
 pub fn ep_builder() -> ResourceArc<ExecutionProfileBuilderResource> {

@@ -96,7 +96,9 @@ defmodule ExScylla.Macros.Native do
 
     prefix = Module.get_attribute(__CALLER__.module, :prefix)
     docs_rs_url = Module.get_attribute(__CALLER__.module, :docs_rs_url)
-    docs_rs_suffix = docs_rs_method_suffix(Keyword.get(macro_args, :docs_rs_method, :default), name)
+
+    docs_rs_suffix =
+      docs_rs_method_suffix(Keyword.get(macro_args, :docs_rs_method, :default), name)
 
     doc = """
     #{if docs_rs_url != "", do: "See: #{docs_rs_url}#{docs_rs_suffix}"}
@@ -157,7 +159,9 @@ defmodule ExScylla.Macros.Native do
 
     prefix = Module.get_attribute(__CALLER__.module, :prefix)
     docs_rs_url = Module.get_attribute(__CALLER__.module, :docs_rs_url)
-    docs_rs_suffix = docs_rs_method_suffix(Keyword.get(macro_args, :docs_rs_method, :default), name)
+
+    docs_rs_suffix =
+      docs_rs_method_suffix(Keyword.get(macro_args, :docs_rs_method, :default), name)
 
     async_doc = """
     #{if docs_rs_url != "", do: "See: #{docs_rs_url}#{docs_rs_suffix}"}

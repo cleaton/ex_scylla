@@ -11,10 +11,15 @@ use scylla::policies::load_balancing::{DefaultPolicyBuilder, LatencyAwarenessBui
 
 pub struct DefaultPolicyBuilderResource(pub Mutex<Cell<DefaultPolicyBuilder>>);
 impl std::panic::RefUnwindSafe for DefaultPolicyBuilderResource {}
+impl rustler::Resource for DefaultPolicyBuilderResource {}
+
 pub struct LatencyAwarenessPolicyBuilderResource(pub Mutex<Cell<LatencyAwarenessBuilder>>);
 impl std::panic::RefUnwindSafe for LatencyAwarenessPolicyBuilderResource {}
+impl rustler::Resource for LatencyAwarenessPolicyBuilderResource {}
+
 pub struct LoadBalancingPolicyResource(pub Arc<dyn LoadBalancingPolicy>);
 impl std::panic::RefUnwindSafe for LoadBalancingPolicyResource {}
+impl rustler::Resource for LoadBalancingPolicyResource {}
 
 macro_rules! use_builder {
     ($dpbr:ident, $e:expr) => {
@@ -39,6 +44,7 @@ fn dpb_build(
     let mut guard: MutexGuard<Cell<DefaultPolicyBuilder>> = dpbr.0.lock().unwrap();
     let builder = guard.get_mut().clone();
     drop(guard);
+    let _rt_guard = crate::runtime::rt().enter();
     ResourceArc::new(LoadBalancingPolicyResource(builder.build()))
 }
 

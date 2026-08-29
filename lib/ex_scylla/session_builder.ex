@@ -329,4 +329,40 @@ defmodule ExScylla.SessionBuilder do
     iex> true = is_reference(sb)
     """
   )
+
+  native_f(
+    func: :prefer_datacenter,
+    args: [sb, datacenter_name],
+    args_spec: [T.session_builder(), String.t()],
+    return_spec: T.session_builder(),
+    doc_example: """
+    iex> sb = SessionBuilder.new()
+    iex> sb = SessionBuilder.prefer_datacenter(sb, "datacenter1")
+    iex> true = is_reference(sb)
+    """
+  )
+
+  native_f(
+    func: :prefer_datacenter_and_rack,
+    args: [sb, datacenter_name, rack_name],
+    args_spec: [T.session_builder(), String.t(), String.t()],
+    return_spec: T.session_builder(),
+    doc_example: """
+    iex> sb = SessionBuilder.new()
+    iex> sb = SessionBuilder.prefer_datacenter_and_rack(sb, "datacenter1", "rack1")
+    iex> true = is_reference(sb)
+    """
+  )
+
+  native_f(
+    func: :prefer_no_datacenter,
+    args: [sb],
+    args_spec: [T.session_builder()],
+    return_spec: T.session_builder(),
+    doc_example: """
+    iex> sb = SessionBuilder.new()
+    iex> sb = SessionBuilder.prefer_no_datacenter(sb)
+    iex> true = is_reference(sb)
+    """
+  )
 end

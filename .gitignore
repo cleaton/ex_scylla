@@ -32,3 +32,5 @@ ex_scylla_driver-*.tar
 /*.profraw
 /.vscode
 /log
+/conductor/
+/reference/

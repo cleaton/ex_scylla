@@ -6,6 +6,7 @@ use super::execution_profile::ExecutionProfileResource;
 use super::execution_profile_builder::ExecutionProfileBuilderResource;
 pub struct ExecutionProfileHandleResource(pub ExecutionProfileHandle);
 impl std::panic::RefUnwindSafe for ExecutionProfileHandleResource {}
+impl rustler::Resource for ExecutionProfileHandleResource {}
 
 #[rustler::nif]
 fn eph_map_to_another_profile(

@@ -11,7 +11,7 @@ pub enum ScyllaResult<R: Encoder, E: Encoder> {
     Err(E),
 }
 
-impl<'a, R: Encoder, E: Encoder> Encoder for ScyllaResult<R, E> {
+impl<R: Encoder, E: Encoder> Encoder for ScyllaResult<R, E> {
     fn encode<'b>(&self, env: Env<'b>) -> Term<'b> {
         match self {
             Self::Unwrapped(r) => r.encode(env),
@@ -63,10 +63,10 @@ macro_rules! async_elixir {
             let mut owned_env = OwnedEnv::new();
             let opaque = owned_env
                 .run(|env| -> NifResult<SavedTerm> { Ok(owned_env.save($opaque.in_env(env))) })?;
-            let _ = runtime::rt().spawn(async move {
+            drop(runtime::rt().spawn(async move {
                 let res = $e;
                 owned_env.send_and_clear(&pid, |env| (opaque.load(env), res).encode(env));
-            });
+            }));
             Ok(())
         })()
     };
@@ -76,12 +76,12 @@ macro_rules! async_elixir {
             let mut owned_env = OwnedEnv::new();
             let opaque = owned_env
                 .run(|env| -> NifResult<SavedTerm> { Ok(owned_env.save($opaque.in_env(env))) })?;
-            let _ = runtime::rt().spawn(async move {
+            drop(runtime::rt().spawn(async move {
                 let $res_ident = $e;
                 owned_env.send_and_clear(&pid, |$env_ident| {
                     (opaque.load($env_ident), $enc).encode($env_ident)
                 });
-            });
+            }));
             Ok(())
         })()
     };

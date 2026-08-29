@@ -6,12 +6,15 @@ An Elixir wrapper around the [scylla-rust-driver](https://rust-driver.docs.scyll
 * Easy to maintain & to add new features as they arrive in the rust driver
 * Users of ExScylla should be able to leverage the rust driver documentation
 
-Docs and api example found at: https://hexdocs.pm/ex_scylla
+Documentation and API examples are available at: https://hexdocs.pm/ex_scylla
+Technical architecture and design docs can be found in the [docs/](docs/README.md) folder.
+Agent instructions and guidelines are located in [AGENTS.md](AGENTS.md).
 
 ## Prerequisites
 
-* **Rust and Cargo**: Since this library uses Rustler to compile the native Rust extension, you must have the Rust toolchain installed.
-* **scylla_unstable flag**: Some features of the underlying Rust driver may require the `scylla_unstable` cfg flag to be enabled during compilation.
+* **mise**: Language runtime manager for Erlang, Elixir, and Rust (`mise install`).
+* **Docker**: Required for running ScyllaDB test containers and benchmarks.
+* **scylla_unstable flag**: Enabled automatically via `.cargo/config.toml`.
 
 ## Architecture & Performance
 
@@ -56,7 +59,7 @@ https://hex.pm/packages/ex_scylla
 ```elixir
 def deps do
   [
-    {:ex_scylla, "~> 0.9.1"}
+    {:ex_scylla, "~> 0.10.0"}
   ]
 end
 ```

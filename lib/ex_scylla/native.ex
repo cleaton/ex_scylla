@@ -44,6 +44,9 @@ defmodule ExScylla.Native do
   def sb_user(_sbr, _username, _passwd), do: e()
   def sb_use_keyspace(_sbr, _keyspace_name, _case_sensitive), do: e()
   def sb_write_coalescing(_sbr, _enablde), do: e()
+  def sb_prefer_datacenter(_sbr, _datacenter_name), do: e()
+  def sb_prefer_datacenter_and_rack(_sbr, _datacenter_name, _rack_name), do: e()
+  def sb_prefer_no_datacenter(_sbr), do: e()
   # Session
   def s_calculate_token_for_partition_key(_session, _keyspace, _table, _partition_key), do: e()
   def s_get_cluster_state(_session), do: e()

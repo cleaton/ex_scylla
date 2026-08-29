@@ -36,10 +36,10 @@ pub struct ScyllaMetrics {
 impl From<&scylla::observability::metrics::Metrics> for ScyllaMetrics {
     fn from(m: &scylla::observability::metrics::Metrics) -> Self {
         ScyllaMetrics {
-            errors_num: m.get_errors_num(),
-            queries_num: m.get_queries_num(),
-            errors_iter_num: m.get_errors_iter_num(),
-            queries_iter_num: m.get_queries_iter_num(),
+            errors_num: m.get_errors_unpaged_num() + m.get_errors_manually_paged_num(),
+            queries_num: m.get_requests_unpaged_num() + m.get_requests_manually_paged_num(),
+            errors_iter_num: m.get_errors_automatically_paged_num(),
+            queries_iter_num: m.get_requests_automatically_paged_num(),
             retries_num: m.get_retries_num(),
             mean_rate: m.get_mean_rate(),
             one_minute_rate: m.get_one_minute_rate(),
@@ -132,21 +132,30 @@ impl From<&scylla::cluster::Node> for ScyllaNodeInfo {
 pub struct ScyllaClusterState {
     pub nodes: Vec<ScyllaNodeInfo>,
     pub keyspaces: Vec<String>,
+    pub cluster_name: Option<String>,
 }
 
 impl From<&scylla::cluster::ClusterState> for ScyllaClusterState {
     fn from(cs: &scylla::cluster::ClusterState) -> Self {
+        let cluster_name = cs.cluster_name();
         ScyllaClusterState {
             nodes: cs.get_nodes_info().iter().map(|n| (&**n).into()).collect(),
             keyspaces: cs.keyspaces_iter().map(|(k, _)| k.to_string()).collect(),
+            cluster_name: if cluster_name.is_empty() {
+                None
+            } else {
+                Some(cluster_name.to_string())
+            },
         }
     }
 }
 
 pub struct SessionResource(pub Session);
 impl std::panic::RefUnwindSafe for SessionResource {}
+impl rustler::Resource for SessionResource {}
 
 pub struct ScyllaRawRowsResource(pub bytes::Bytes);
+impl rustler::Resource for ScyllaRawRowsResource {}
 
 #[derive(NifStruct, Debug)]
 #[module = "ExScylla.Types.QueryResult"]
@@ -467,7 +476,7 @@ impl From<uuid::Uuid> for ScyllaBinary {
         ScyllaBinary(u.as_bytes().to_vec())
     }
 }
-impl<'a> Encoder for ScyllaBinary {
+impl Encoder for ScyllaBinary {
     fn encode<'b>(&self, env: Env<'b>) -> Term<'b> {
         let mut nb = NewBinary::new(env, self.0.len());
         nb.as_mut_slice().copy_from_slice(&self.0);

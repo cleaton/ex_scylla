@@ -4,10 +4,14 @@ defmodule ExScylla.MixProject do
   def project do
     [
       app: :ex_scylla,
-      version: "0.9.1",
+      version: "0.10.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
-      test_coverage: [tool: LcovEx, output: "cover"],
+      test_coverage: [
+        tool: LcovEx,
+        output: "cover",
+        ignore_paths: ["lib/ex_scylla/native.ex", "lib/ex_scylla/macros/native.ex"]
+      ],
       deps: deps(),
       description: description(),
       package: package(),
@@ -98,11 +102,11 @@ defmodule ExScylla.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.37.3"},
-      {:testcontainers, "~> 1.14 or ~> 2.1", only: [:test, :bench]},
+      {:rustler, "~> 0.38.0"},
+      {:testcontainers, "~> 2.4", only: [:test, :bench]},
       {:lcov_ex, "~> 0.3", only: [:test], runtime: false},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
-      {:benchee, "~> 1.0", only: [:bench]},
+      {:benchee, "~> 1.5", only: [:bench]},
       {:erlcass, "~> 4.1", only: [:bench], runtime: false}
     ]
   end

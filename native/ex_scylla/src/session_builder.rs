@@ -314,3 +314,34 @@ fn sb_user(
     use_builder!(sbr, |sb: SessionBuilder| { sb.user(username, passwd) });
     sbr
 }
+
+#[rustler::nif]
+fn sb_prefer_datacenter(
+    sbr: ResourceArc<SessionBuilderResource>,
+    datacenter_name: String,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| {
+        sb.prefer_datacenter(datacenter_name)
+    });
+    sbr
+}
+
+#[rustler::nif]
+fn sb_prefer_datacenter_and_rack(
+    sbr: ResourceArc<SessionBuilderResource>,
+    datacenter_name: String,
+    rack_name: String,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| {
+        sb.prefer_datacenter_and_rack(datacenter_name, rack_name)
+    });
+    sbr
+}
+
+#[rustler::nif]
+fn sb_prefer_no_datacenter(
+    sbr: ResourceArc<SessionBuilderResource>,
+) -> ResourceArc<SessionBuilderResource> {
+    use_builder!(sbr, |sb: SessionBuilder| { sb.prefer_no_datacenter() });
+    sbr
+}

@@ -8,6 +8,7 @@ use crate::{
 
 pub struct PreparedStatementResource(pub PreparedStatement);
 impl std::panic::RefUnwindSafe for PreparedStatementResource {}
+impl rustler::Resource for PreparedStatementResource {}
 
 to_elixir!(
     PreparedStatement,

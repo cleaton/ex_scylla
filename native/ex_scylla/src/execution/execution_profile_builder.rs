@@ -12,6 +12,7 @@ use super::retry_policy::ScyllaRetryPolicy;
 use super::speculative_execution::ScyllaSpeculativeExecutionPolicy;
 
 pub struct ExecutionProfileBuilderResource(pub Mutex<ExecutionProfileBuilder>);
+impl rustler::Resource for ExecutionProfileBuilderResource {}
 
 impl Deref for ExecutionProfileBuilderResource {
     type Target = Mutex<ExecutionProfileBuilder>;
@@ -36,6 +37,7 @@ fn epb_build(
     let guard = epbr.0.lock().unwrap();
     let epbc = guard.clone();
     drop(guard);
+    let _rt_guard = crate::runtime::rt().enter();
     ResourceArc::new(ExecutionProfileResource(epbc.build()))
 }
 

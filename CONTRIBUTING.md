@@ -1,29 +1,36 @@
 # Contributing to ExScylla
 
 ## Prerequisites
-- Elixir 1.15+
-- Docker (required for TestContainers)
-- Rust toolchain (for native extensions)
+- [mise](https://mise.jdx.dev/) (manages Erlang, Elixir, and Rust toolchains)
+- Docker (required for TestContainers and local database workflows)
 
 ## Development Environment
 
 1. Fork and clone the repository
-2. Install dependencies:
+2. Install runtimes with `mise`:
    ```bash
-   mix deps.get
+   mise install
    ```
-3. Install test dependencies (optional for rust code coverage):
+3. Install dependencies:
    ```bash
-   make install_test_deps
+   mise run deps:get
+   ```
+4. Compile the project and native extensions:
+   ```bash
+   mise run compile
+   ```
+5. Install test dependencies for code coverage:
+   ```bash
+   mise run install-test-deps
    ```
 
 ## Testing
 
-Tests use TestContainers to automatically manage ScyllaDB instances. Make sure Docker is running before executing tests.
+Tests use TestContainers to automatically manage ScyllaDB instances (`scylladb/scylla:2026.2`). Ensure Docker is running before executing tests.
 
 ```bash
 # Run the full test suite
-mix test
+mise run test
 
 # Run a specific test file
 mix test test/session_test.exs
@@ -31,11 +38,13 @@ mix test test/session_test.exs
 # Run a specific test (line number)
 mix test test/session_test.exs:42
 
-# Run tests with coverage
-make test
+# Run tests with coverage (LLVM profile + Elixir coverage)
+mise run test:coverage
 ```
 
-Test coverage reports are generated automatically and can be found in the `cover/` directory.
+Test coverage reports are generated automatically and saved to the `cover/` directory.
+
+For comprehensive architectural patterns and invariants, see [docs/](docs/README.md) and [AGENTS.md](AGENTS.md).
 
 ## Benchmarks
 

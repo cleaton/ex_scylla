@@ -1,0 +1,127 @@
+[tools]
+rust = "1.97.1"
+erlang = "28.4.1"
+elixir = "1.19.5-otp-28"
+"cargo:grcov" = "0.10.7"
+
+[tasks."deps:get"]
+description = "Fetch Mix dependencies"
+run = "mix deps.get"
+
+[tasks.compile]
+description = "Compile Elixir and Rust native extensions"
+run = "mix compile"
+
+[tasks.lint]
+description = "Run code formatting checks, compiler checks, cargo check, and clippy"
+run = '''
+mix format --check-formatted
+mix compile --warnings-as-errors
+cargo fmt --check --manifest-path native/ex_scylla/Cargo.toml
+RUSTFLAGS="--cfg scylla_unstable" cargo check --manifest-path native/ex_scylla/Cargo.toml
+RUSTFLAGS="--cfg scylla_unstable" cargo clippy --manifest-path native/ex_scylla/Cargo.toml --all-targets -- -D warnings
+'''
+
+[tasks.format]
+description = "Format Elixir and Rust source code"
+run = '''
+mix format
+cargo fmt --manifest-path native/ex_scylla/Cargo.toml
+'''
+
+[tasks.build]
+description = "Build the full project with linting and compilation"
+depends = ["deps:get", "lint", "compile"]
+
+[tasks.test]
+description = "Run test suite"
+run = "mix test"
+
+[tasks."test:coverage"]
+description = "Run tests with coverage and print summary tables for Elixir and Rust"
+run = '''
+mkdir -p cover
+rm -f cover/*
+MIX_ENV=test RUSTFLAGS="-C instrument-coverage" mix compile
+LLVM_PROFILE_FILE=cover/ex-scylla-driver.profraw MIX_ENV=test mix test --cover
+if command -v grcov >/dev/null 2>&1; then
+  LLVM_BIN_DIR="$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | grep host | cut -d' ' -f2)/bin"
+  grcov cover/ex-scylla-driver.profraw \
+    --binary-path ./_build/test/lib/ex_scylla/priv/native \
+    -s ./native/ex_scylla \
+    -t lcov \
+    --branch \
+    --ignore-not-existing \
+    --ignore "$HOME/.cargo/*" \
+    --ignore "*/target/*" \
+    --ignore "*nif_api.snippet.rs*" \
+    --llvm-path "$LLVM_BIN_DIR" \
+    -o cover/rust-lcov.info 2>/dev/null || true
+fi
+elixir -e '
+print_table = fn title, filename, label ->
+  if File.exists?(filename) do
+    content = File.read!(filename)
+    records = String.split(content, "end_of_record\n")
+    stats = Enum.map(records, fn rec ->
+      case Regex.run(~r/SF:(.+)\n/, rec) do
+        [_, file] ->
+          lf = case Regex.run(~r/LF:(\d+)/, rec) do [_, val] -> String.to_integer(val); _ -> 0 end
+          lh = case Regex.run(~r/LH:(\d+)/, rec) do [_, val] -> String.to_integer(val); _ -> 0 end
+          fnf = case Regex.run(~r/FNF:(\d+)/, rec) do [_, val] -> String.to_integer(val); _ -> 0 end
+          fnh = case Regex.run(~r/FNH:(\d+)/, rec) do [_, val] -> String.to_integer(val); _ -> 0 end
+          {file, lf, lh, fnf, fnh}
+        _ -> nil
+      end
+    end) |> Enum.reject(&is_nil/1)
+
+    total_lf = Enum.sum(Enum.map(stats, &elem(&1, 1)))
+    total_lh = Enum.sum(Enum.map(stats, &elem(&1, 2)))
+    total_fnf = Enum.sum(Enum.map(stats, &elem(&1, 3)))
+    total_fnh = Enum.sum(Enum.map(stats, &elem(&1, 4)))
+
+    IO.puts("\n================================================================================")
+    IO.puts(" " <> title)
+    IO.puts("================================================================================")
+    IO.puts(String.pad_trailing(label, 50) <> " | Line Coverage        | Function Coverage")
+    IO.puts("--------------------------------------------------------------------------------")
+    Enum.each(stats, fn {file, lf, lh, fnf, fnh} ->
+      pct = if lf > 0, do: Float.round(lh / lf * 100, 1), else: 0.0
+      fn_pct = if fnf > 0, do: Float.round(fnh / fnf * 100, 1), else: 0.0
+      line_str = "#{lh}/#{lf} (#{pct}%)"
+      fn_str = "#{fnh}/#{fnf} (#{fn_pct}%)"
+      IO.puts(String.pad_trailing(file, 50) <> " | " <> String.pad_trailing(line_str, 20) <> " | #{fn_str}")
+    end)
+    IO.puts("--------------------------------------------------------------------------------")
+    line_cov_pct = if total_lf > 0, do: Float.round(total_lh / total_lf * 100, 2), else: 0.0
+    fn_cov_pct = if total_fnf > 0, do: Float.round(total_fnh / total_fnf * 100, 2), else: 0.0
+    IO.puts("TOTAL LINE COVERAGE:     #{total_lh} / #{total_lf} (#{line_cov_pct}%)")
+    IO.puts("TOTAL FUNCTION COVERAGE: #{total_fnh} / #{total_fnf} (#{fn_cov_pct}%)")
+    IO.puts("================================================================================")
+  end
+end
+
+print_table.("ELIXIR TEST COVERAGE", "cover/lcov.info", "Elixir Module")
+print_table.("RUST NIF TEST COVERAGE", "cover/rust-lcov.info", "Rust Source File")
+'
+'''
+
+[tasks."install-test-deps"]
+description = "Install dependencies for coverage reporting"
+run = "cargo install grcov"
+
+[tasks.bench]
+description = "Run a benchmark (e.g. mise run bench query)"
+run = "mix bench $@"
+
+[tasks."scylla:run"]
+description = "Run standalone ScyllaDB container in foreground (replaces run_scylla.sh)"
+run = "docker run --net=host --name exscylla scylladb/scylla:2026.2 --developer-mode 1 --listen-address 127.0.0.1"
+
+[tasks."scylla:start"]
+description = "Start standalone ScyllaDB container in background"
+run = "docker run -d --rm --net=host --name exscylla scylladb/scylla:2026.2 --developer-mode 1 --listen-address 127.0.0.1"
+
+[tasks."scylla:stop"]
+description = "Stop standalone ScyllaDB container"
+run = "docker stop exscylla"
