@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.10.0] - 2026-08-29
+## [0.10.2] - 2026-08-29
 
 ### Added
 - **Scylla Rust Driver 1.8.0 & `scylla-cql` 1.8.0**: Upgraded core driver dependency with latest upstream features, bug fixes, and stability improvements.

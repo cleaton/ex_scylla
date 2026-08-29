@@ -38,7 +38,7 @@ Ensure the version string matches across all project metadata files:
    def project do
      [
        app: :ex_scylla,
-       version: "0.10.0",
+       version: "0.10.2",
        ...
      ]
    end
@@ -48,14 +48,14 @@ Ensure the version string matches across all project metadata files:
    ```toml
    [package]
    name = "ex_scylla"
-   version = "0.10.0"
+   version = "0.10.2"
    ```
 
 3. **[`README.md`](../README.md)**:
    ```elixir
    def deps do
      [
-       {:ex_scylla, "~> 0.10.0"}
+       {:ex_scylla, "~> 0.10.2"}
      ]
    end
    ```
@@ -70,12 +70,12 @@ Ensure the version string matches across all project metadata files:
 1. **Commit version changes**:
    ```bash
    git add mix.exs native/ex_scylla/Cargo.toml native/ex_scylla/Cargo.lock README.md CHANGELOG.md
-   git commit -m "chore(release): release v0.10.0"
+   git commit -m "chore(release): release v0.10.2"
    ```
 
 2. **Create a signed Git tag**:
    ```bash
-   git tag -a v0.10.0 -m "Release v0.10.0"
+   git tag -a v0.10.2 -m "Release v0.10.2"
    ```
 
 3. **Push commits and tags to remote**:
@@ -109,5 +109,5 @@ Ensure the version string matches across all project metadata files:
 2. Verify documentation generation on [HexDocs.pm/ex_scylla](https://hexdocs.pm/ex_scylla).
 3. Test installing the published dependency in a sample Elixir project:
    ```elixir
-   {:ex_scylla, "~> 0.10.0"}
+   {:ex_scylla, "~> 0.10.2"}
    ```
