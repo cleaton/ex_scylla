@@ -57,11 +57,16 @@ and type modules.
     `async_*` variant an optional trailing opaque term.
   - Queries accept `String.t()` or a `T.query()` reference (converted by private
     `to_scylla_query/1` to `{:string, q}` / `{:query_resource, q}`).
+- `ExScylla.NativeConfig` (`native_config.ex`): `load_data/0` is passed to the NIF
+  on load (`load_data_fun`). It returns `config :ex_scylla, tokio_worker_threads: n`
+  (a positive integer) or `nil` (Tokio default: one worker per core). It is read once per VM.
 - `ExScylla.CqlTypes` (`cql_types.ex`): `decode_value/2` decodes a CQL value
   binary for a column type (ints, floats, boolean, text/ascii/blob, uuid/timeuuid
   as hyphenated hex strings, inet tuples, date, time, timestamp, counter, varint
   and decimal as strings, list/set as lists, map as Elixir map, tuple as tuple,
-  UDT as map); unknown types return the binary unchanged.
+  UDT as map); unknown types return the binary unchanged. A zero-length value
+  decodes to `nil` except for text/ascii/blob (`""`), tuple (`{}`), UDT (`%{}`)
+  and custom types.
 - Subdirectories:
   - [execution](./execution/README.md) - execution profile builder, profile, handle.
   - [load_balancing](./load_balancing/README.md) - default policy and builders.
@@ -75,6 +80,11 @@ and type modules.
   `native/ex_scylla/src/`, a stub in `ExScylla.Native` with the same arity, and a
   wrapper here. `sb_use_keyspace/3` is declared in `ExScylla.Native` but has no
   `SessionBuilder` wrapper.
+- Malformed bound values in `query`, `execute`, `batch` and the paged variants
+  produce `{:error, {:parse_value, msg}}` (since 0.11.0; they used to raise).
+  This includes a UUID that is neither 16 bytes nor a UUID string and an
+  unparsable `varint`/`decimal` string (these used to be sent as empty values).
+- In bound-value lists, `nil` binds NULL and `:empty` binds a zero-length value.
 - I/O-bound session operations go through `native_f_async`: the NIF returns `:ok`
   immediately and the Rust `async_elixir!` macro sends `{opaque, result}` to the
   caller; sync variants wait `timeout_ms` (default 5000) then return
@@ -98,6 +108,12 @@ and type modules.
   async calls perform network I/O on the Rust Tokio runtime and deliver results
   as messages to the calling process mailbox.
 - Late replies after a sync timeout remain in the caller's mailbox.
+- A failed `Session.use_keyspace/3` (for example, a keyspace that does not exist)
+  makes the session unusable: the driver (since `scylla` 1.10) removes pool
+  connections that fail the switch and keeps the bad name for new connections.
+  Queries fail with `{:io_error, "No connections in the pool ..."}` until a later
+  `use_keyspace/3` succeeds. The pool then refills in the background (about
+  100 ms locally).
 - Test builds write LLVM coverage profiles to `/tmp/instrument_coverage.profraw`.
 
 ## Verification

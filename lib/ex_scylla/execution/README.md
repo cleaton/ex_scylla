@@ -26,16 +26,11 @@ handle that sessions and statements reference. All functions are synchronous
   return the same reference. `build/1` clones the builder first, so the builder
   stays usable after building.
 - Retry policy atoms come from the Rust `NifUnitEnum` `ScyllaRetryPolicy`:
-  `:default_retry_policy` and `:fallthrough_retry_policy`. `T.retry_policy` in
-  `lib/ex_scylla/types/types.ex` spells the second one `:fall_through_retry_policy`,
-  which does not decode (known spec bug).
+  `:default_retry_policy` and `:fallthrough_retry_policy` (`T.retry_policy`).
 - Handles are consumed by `SessionBuilder.default_execution_profile_handle/2` and
   the statement `set_execution_profile_handle/2` setters.
-- `map_to_another_profile/2` is specced to return
-  `T.execution_profile_builder()`, but the Rust NIF
-  (`native/ex_scylla/src/execution/execution_profile_handle.rs`) returns unit and
-  remaps a cloned handle; whether the remap is visible through the original
-  handle depends on the driver's shared handle semantics.
+- `map_to_another_profile/2` returns `:ok`. It retargets the handle, so every
+  holder of that handle (sessions, statements) sees the new profile.
 - Each wrapper must have a matching `ExScylla.Native` stub and Rust NIF under
   `native/ex_scylla/src/execution/`.
 

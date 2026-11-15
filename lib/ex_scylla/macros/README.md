@@ -12,7 +12,8 @@ on the Elixir side.
 
 - `ExScylla.Macros.Native` (`native.ex`):
   - `__using__/1` options: `:prefix` (NIF name prefix), `:docs_rs_path`,
-    `:docs_rs_crate` (`:scylla` default or `:scylla_cql`); any other keyword is
+    `:docs_rs_crate` (`:scylla` default or `:scylla_cql`), `:moduledoc_extra`
+    (text appended to the generated `@moduledoc`); any other keyword is
     stored as a persisted module attribute (used for doctest setup snippets such
     as `:session_setup`). Imports the macros, defines `@type opaque :: any()`, and
     sets `@moduledoc` with the docs.rs link.

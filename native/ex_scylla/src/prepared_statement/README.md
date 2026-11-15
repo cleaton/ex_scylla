@@ -14,7 +14,7 @@ Type definitions for the `crate::prepared_statement` NIF module. The NIF handler
 - `NifStruct` field names and `#[module = ...]` values must match the Elixir structs in `lib/ex_scylla/types/`. Renaming a field on one side breaks decoding.
 - `PreparedStatementResource` is treated as immutable: every `ps_set_*` handler clones the inner statement (`to_owned()`) and returns a new resource. The exception is `ps_set_retry_policy/1`, which returns `:not_implemented_yet`.
 - `ScyllaPreparedMetadata.col_count` is derived as the number of bind-variable column specs (`col_specs.iter().count()`), not read from a driver field.
-- `ps_compute_partition_key` raises errors as a `ScyllaPartitionKeyError` term, which the conversion in `../errors.rs` always maps to `ValueTooLong`.
+- `ps_compute_partition_key` returns errors as `{:error, ScyllaPartitionKeyError}` (`NoPkIndexValue`, `ValueTooLong` or `SerializationError`, see `../errors.rs`).
 - `ScyllaColumnSpec` is defined in `../session/types.rs`. Metadata conversion depends on its `ToElixir` impl there.
 
 ## Side Effects

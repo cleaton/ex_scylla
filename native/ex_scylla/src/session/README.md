@@ -16,7 +16,7 @@ Other modules import from here: `prepared_statement` (`ScyllaColumnSpec`), `../s
 - **Values**
   - `ScyllaValue` (`NifTaggedEnum`): `Ascii, Boolean, Blob, Counter, Decimal, Date, Double, Duration, Empty, Float, Int, BigInt, Text, Timestamp, Inet, List, Map, Set, UserDefinedType, SmallInt, TinyInt, Time, Timeuuid, Tuple, Uuid, Varint`. Elixir form is `{:tag, value}`, for example `{:int, 42}`.
     - `impl TryFrom<CqlValue> for ScyllaValue`: returns `Err(rustler::Error::Term("unsupported_cql_value"))` for unmapped variants.
-    - `impl From<ScyllaValue> for CqlValue`.
+    - `impl TryFrom<ScyllaValue> for CqlValue` (see Invariants).
   - `ScyllaBinary(pub Vec<u8>)`: custom `Encoder`/`Decoder` for Elixir binaries. Implements `From<Vec<u8>>`, `From<bytes::Bytes>`, and `From<uuid::Uuid>`.
   - `ScyllaUuid`: an `Encoder` that turns a UUID into a 16-byte binary.
   - `ScyllaPageState`: `Encoder`/`Decoder` between `scylla::response::PagingState` and an Elixir binary, plus `ToRust` for `Option<ScyllaPageState>`.
@@ -42,8 +42,9 @@ Other modules import from here: `prepared_statement` (`ScyllaColumnSpec`), `../s
 - **The Rust layer does not decode rows.** `ScyllaQueryResult::new` copies only the column types and exposes the raw rows frame (`raw_rows_with_metadata().raw_rows()`) as a resource binary via `ResourceArc::make_binary`. The Elixir side (`QueryResult.decode/1` and `decode_raw/1` in `lib/ex_scylla/types/query_result.ex`) decodes rows. For non-rows results, `rows` and `rows_count` are `None`.
 - `ScyllaQueryResult::new` always sets `paging_state: None` and `serialized_size: 0`. Paged NIFs in `../session.rs` fill in `paging_state` afterwards when the driver returns `PagingStateResponse::HasMorePages`.
 - `ScyllaValue` <-> `CqlValue` must stay bidirectional, and must stay in sync with `lib/ex_scylla/cql_types.ex` (see `AGENTS.md`). Decimal and Varint travel as decimal strings (`BigDecimal` / `BigInt`).
-- Elixir -> CQL conversion is lenient: an unparsable `Decimal` or `Varint` string, or a `Uuid`/`Timeuuid` binary whose length is not 16 bytes, becomes `CqlValue::Empty` instead of raising an error.
-- Every `NifStruct` `#[module = ...]` and its field names must match the Elixir struct in `lib/ex_scylla/types/`. Known violation: `ScyllaUserDefinedColumnType.field_types` vs the Elixir `UserDefinedColumnType.fields_types`.
+- Elixir -> CQL conversion is `impl TryFrom<ScyllaValue> for CqlValue` (`Error = String`). `Uuid`/`Timeuuid` accept a 16-byte binary or a UUID string (`parse_uuid`, `uuid::Uuid::try_parse_ascii`). An unparsable `Decimal`/`Varint` string or UUID, including one nested in a collection, tuple or UDT, is an error; `../session.rs` returns it as `{:error, {:parse_value, msg}}`.
+- Bound-value lists decode each element as `Option<ScyllaValue>` (`../session.rs` `BoundValues = Vec<Option<CqlValue>>`): `nil` binds NULL, while `ScyllaValue::Empty` (`:empty`) binds `CqlValue::Empty`, a zero-length value that is not NULL.
+- Every `NifStruct` `#[module = ...]` and its field names must match the Elixir struct in `lib/ex_scylla/types/`.
 - `ScyllaRawRowsResource` and `SessionResource` must stay registered in `../lib.rs` `load/2`.
 
 ## Side Effects

@@ -58,12 +58,32 @@ The scripts depend on these external symbols:
   In `insert.exs` the two row generators (`generate_exscylla_row`,
   `generate_erlcass_row`) must keep the same column order as the
   `INSERT ... VALUES (?, ...)` statement.
+- `erlcass` 4.1.5 does not build on OTP 29 by itself: its Makefile generates
+  `c_src/env.mk` with `erl -s init stop -eval ...`, and OTP 29 stops the VM
+  before the `-eval` runs. `mix.exs:erlcass_build_env/0` writes that file to
+  `_build/bench/erlcass_env.mk` and passes `C_SRC_ENV` to the `mix run`
+  subprocess. A harmless "Error! Failed to eval" line still appears in the build
+  output. Running `MIX_ENV=bench mix compile` directly bypasses the workaround.
 - `query_stream.exs` does not use a paging or streaming API, despite its name.
   It measures concurrent `async_execute` point selects.
 
+- Environment knobs (read by `ExScylla.TestSupport` and `config/bench.exs`):
+  `EX_SCYLLA_TEST_SMP` sets the ScyllaDB shard count (default `1`), and
+  `EX_SCYLLA_TOKIO_WORKERS` sets ExScylla's Tokio worker thread count.
+  A single shard funnels both drivers through one connection, which hides the
+  Rust driver's shard-aware routing. Compare with `EX_SCYLLA_TEST_SMP=4` too.
+- Async jobs call `Process.flag(:message_queue_data, :off_heap)` for both drivers.
+  Replies come from several threads, and on-heap queues add lock contention.
+  `insert.exs` truncates its table in `before_scenario`, because Benchee runs
+  scenarios alphabetically and the first one would otherwise get an empty table.
+- ExScylla `async_*` replies carry undecoded rows. `query.exs` decodes them with
+  `QueryResult.decode/1` / `decode_raw/1` so both drivers do the same work, and
+  `insert.exs` passes the UUID strings `erlcass` generates to both drivers unchanged
+  (ExScylla accepts UUID strings since 0.11.0).
+
 ## Side Effects
 
-- Each run uses Testcontainers to start a new `scylladb/scylla:2026.2` Docker
+- Each run uses Testcontainers to start a new `scylladb/scylla:2026.3` Docker
   container (`TestSupport.start_container/0`). Docker must be running.
 - The scripts create keyspaces and tables with `CREATE ... IF NOT EXISTS` and
   insert seed rows. Those are network writes to the container.

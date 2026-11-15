@@ -22,8 +22,7 @@ holds the Elixir-side row decoder used by the decoded and raw result APIs.
     :local_quorum | :each_quorum | :local_one`), `serial_consistency`
     (`:serial | :local_serial`), `batch_type` (`:logged | :unlogged | :counter`),
     `transport_compression` (`:lz4 | :snappy`), `retry_policy`
-    (`:default_retry_policy | :fall_through_retry_policy`; the NIF accepts
-    `:fallthrough_retry_policy`, so the second atom in the spec is wrong), `pool_size`
+    (`:default_retry_policy | :fallthrough_retry_policy`), `pool_size`
     (`{:per_host, n} | {:per_shard, n}`), `speculative_execution_policy`.
   - Result aliases: `metrics`, `cluster_state`, `tracing_info`, `msg`.
   - Values: `value` (tagged tuples such as `{:int, integer()}`, `{:text, String.t()}`,
@@ -32,6 +31,9 @@ holds the Elixir-side row decoder used by the decoded and raw result APIs.
     `parse_error` (`{:error, {:parse_value, msg}}`).
 - `ExScylla.Types.QueryResult` (`native_struct`: `rows`, `rows_count`,
   `column_types`, `warnings`, `tracing_id`, `paging_state`, `serialized_size`):
+  - Row decoding matches common fixed-width types and text/ascii/blob directly out of
+    the rows binary (private `row_typed/3`, `row_raw/3`); other types go through
+    `ExScylla.CqlTypes.decode_value/2`.
   - `decode/1`: when `rows` is a binary, decodes it into `[%Row{columns: [{type, value} | nil]}]`.
   - `decode_raw/1`: decodes into `%QueryResultRaw{rows: [[value | nil]]}` (no type tags).
   - `decode_rows/3,4`, `decode_rows_raw/3,4`, `decode_row/2,3`, `decode_row_raw/2,3`:
@@ -44,7 +46,7 @@ holds the Elixir-side row decoder used by the decoded and raw result APIs.
   `TableSpec` (`ks_name`, `table_name`), `PartitionKeyIndex` (`index`, `sequence`),
   `PreparedMetadata` (`col_count`, `pk_indexes`, `col_specs`; docs.rs crate
   `:scylla_cql`), `UserDefinedType` (`type_name`, `keyspace`, `fields`),
-  `UserDefinedColumnType` (`type_name`, `keyspace`, `fields_types`),
+  `UserDefinedColumnType` (`type_name`, `keyspace`, `field_types`),
   `SimpleSpeculativeExecutionPolicy` (`max_retry_count`, `retry_interval_ms`),
   `PercentileSpeculativeExecutionPolicy` (`max_retry_count`, `percentile`).
 - Plain `defstruct` modules (no enforced keys): `ClusterState` (`nodes`,
@@ -65,14 +67,11 @@ holds the Elixir-side row decoder used by the decoded and raw result APIs.
 - Decoded runtime shapes differ from the `value` typespec in places (from
   `ExScylla.CqlTypes.decode_value/2`): `:uuid`/`:timeuuid` become lowercase
   hyphenated hex strings, maps become Elixir maps, tuples become Elixir tuples,
-  UDTs become maps keyed by field name. `:duration` and `{:custom, _}` columns are
+  UDTs become maps keyed by field name, and `:duration` becomes
+  `%CqlDuration{}` (decoded from three zigzag vints). `{:custom, _}` columns are
   not decoded and come back as raw binaries.
-- Known field mismatch: `UserDefinedColumnType` declares `fields_types`, but the
-  Rust `NifStruct` (`native/ex_scylla/src/session/types.rs`) encodes `field_types`.
-- `column_type` declares UDT columns as `{:user_defined_type, UserDefinedColumnType.t()}`,
-  but `CqlTypes.decode_value/2` only handles `{:user_defined_type, [{name, type}]}`
-  lists (covered only by `test/cql_types_unit_test.exs`); confirm end-to-end UDT
-  decoding before relying on it.
+- UDT columns arrive as `{:user_defined_type, %UserDefinedColumnType{}}`; `CqlTypes.decode_value/2`
+  also accepts the plain `[{name, type}]` list form.
 
 ## Side Effects
 

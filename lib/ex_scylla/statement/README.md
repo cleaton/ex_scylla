@@ -18,9 +18,8 @@ functions perform network I/O; execution happens through `ExScylla.Session`.
   `set_page_size/2`, `set_timestamp/2`, `set_tracing/2`, `set_request_timeout/2`,
   `set_execution_profile_handle/2`.
 - `ExScylla.Statement.Prepared` (prefix `:ps`, Rust `PreparedStatement`):
-  `compute_partition_key/2` (the Rust NIF returns a bare binary on success, and
-  `{:error, PartitionKeyError.t()}` or `{:error, {:parse_value, msg}}` on failure;
-  the `@spec` in `prepared.ex` still says `{:ok, binary} | ...`), `get_id/1`,
+  `compute_partition_key/2` (returns a bare binary on success, and
+  `{:error, PartitionKeyError.t()}` or `{:error, {:parse_value, msg}}` on failure), `get_id/1`,
   `get_statement/1`, `get_keyspace_name/1`, `get_table_name/1`,
   `get_prepared_metadata/1` (`PreparedMetadata.t()`), `get_prepare_tracing_ids/1`,
   `is_confirmed_lwt/1`, `is_token_aware/1`, `get_use_cached_result_metadata/1`,

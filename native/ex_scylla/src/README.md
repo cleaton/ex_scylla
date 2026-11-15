@@ -6,12 +6,12 @@ Rust sources for the `ex_scylla` cdylib, loaded by Elixir as `Elixir.ExScylla.Na
 Each top-level `<name>.rs` holds the NIF handlers for one area. The matching `<name>/` subdirectory holds its resource and conversion types.
 
 ## Interface
-- `lib.rs`: `rustler::init!("Elixir.ExScylla.Native", load = load)`. `load/2` calls `runtime::init()` and registers 12 resource types: `SessionBuilderResource`, `SessionResource`, `ScyllaRawRowsResource`, `BatchResource`, `PreparedStatementResource`, `QueryResource`, `ExecutionProfileBuilderResource`, `ExecutionProfileHandleResource`, `ExecutionProfileResource`, `DefaultPolicyBuilderResource`, `LatencyAwarenessPolicyBuilderResource`, and `LoadBalancingPolicyResource`. Public modules: `consts`, `errors`, `runtime`, `types`, `utils`.
-- `runtime.rs`: `RUNTIME: OnceLock<Runtime>`, `init()` (multi-thread runtime with time and IO enabled), and `rt() -> &'static Runtime` (panics with `"runtime is not initialized"` if called before `init`).
+- `lib.rs`: `rustler::init!("Elixir.ExScylla.Native", load = load)`. `load/2` calls `runtime::init(worker_threads)` (the load data from `ExScylla.NativeConfig.load_data/0`: an integer or `nil`) and registers 12 resource types: `SessionBuilderResource`, `SessionResource`, `ScyllaRawRowsResource`, `BatchResource`, `PreparedStatementResource`, `QueryResource`, `ExecutionProfileBuilderResource`, `ExecutionProfileHandleResource`, `ExecutionProfileResource`, `DefaultPolicyBuilderResource`, `LatencyAwarenessPolicyBuilderResource`, and `LoadBalancingPolicyResource`. Public modules: `consts`, `errors`, `runtime`, `types`, `utils`.
+- `runtime.rs`: `RUNTIME: OnceLock<Runtime>`, `init(worker_threads: Option<usize>)` (multi-thread runtime with time and IO enabled; Tokio's default of one worker per core unless `:tokio_worker_threads` is configured), and `rt() -> &'static Runtime` (panics with `"runtime is not initialized"` if called before `init`).
 - `utils.rs`
   - Traits: `ToElixir<T>` (with `IS_UNWRAPPED`) and `ToRust<T>`.
   - `ScyllaResult<R, E>`, which encodes `Unwrapped(r)` as `r`, `Ok(r)` as `{:ok, r}`, and `Err(e)` as `{:error, e}`.
-  - Macros: `async_elixir!`, `to_elixir!`, `clone_enum!`.
+  - Macros: `async_elixir!`, `async_elixir_decoded!`, `to_elixir!`, `clone_enum!`.
   - Blanket impls: `Result<S, E>` -> `ScyllaResult`, `()` -> `:ok`, `bool`, and `Vec<B>`.
 - `types.rs`: unit enums mirrored from the driver via `clone_enum!`.
   - `ScyllaConsistency`: `Any, One, Two, Three, Quorum, All, LocalQuorum, EachQuorum, Serial, LocalSerial, LocalOne`.
@@ -19,9 +19,9 @@ Each top-level `<name>.rs` holds the NIF handlers for one area. The matching `<n
   - `ScyllaSerialConsistency`: `Serial, LocalSerial`.
 - `consts.rs`: atoms `not_implemented_yet` and `execute`.
 - `errors.rs`: driver error -> Elixir term translation via `to_elixir!`.
-  - `ScyllaQueryError` (from `ExecutionError`): `DbError`, `BadQuery`, `IoError`, and others. Unmatched driver errors become `IoError(String)`.
+  - `ScyllaQueryError` (from `ExecutionError`): `attempt_error/1` maps a request attempt's error to `DbError`, `BadQuery` (value serialization), `UnableToAllocStreamId`, `InvalidMessage` (frame parse errors), `ProtocolError`, or `IoError` (broken connection). `RequestTimeout` maps directly, and a failed prepare uses its first attempt's error. Connection pool, empty plan and metadata errors stay `IoError`.
   - `ScyllaDbError` (one variant per `DbError` kind, each carrying the server message; unknown kinds -> `Other`).
-  - Several declared variants are never produced. In `ScyllaQueryError`, every error other than `DbError`/`BadQuery` becomes `IoError`. `ScyllaPartitionKeyError` is always `ValueTooLong`, `ScyllaBadKeyspaceName` is never `TooLong`, `ScyllaNewSessionError` only produces `FailedToResolveAnyHostname`, `EmptyKnownNodesList` or `IoError`, and `ScyllaTranslationError` falls back to `NoRuleForAddress`.
+  - `ScyllaNewSessionError` maps every driver variant (`FailedToResolveAnyHostname`, `EmptyKnownNodesList`, `MetadataError`, `UseKeyspaceError`, `IllegalConfig`). `ScyllaBadKeyspaceName` maps `Empty`, `TooLong` and `IllegalCharacter`. `ScyllaPartitionKeyError` maps `PartitionKeyExtraction` to `NoPkIndexValue`, `TokenCalculation` to `ValueTooLong` and `Serialization` to `SerializationError`. `ScyllaQueryError::TimeoutError`/`TooManyOrphanedStreamIds`/`TranslationError` are kept for compatibility but not produced.
   - Also: `ScyllaBadQuery`, `ScyllaTranslationError`, `ScyllaSerializeValuesError`, `ScyllaNewSessionError`, `ScyllaBadKeyspaceName`, `ScyllaPartitionKeyError`, and `ScyllaError(Atom, String)` (`parse/1` -> `{:parse_value, msg}`, `Into<rustler::Error>`).
 - `session.rs`: `Session` NIFs.
   - Async (reply via message): `s_query`, `s_query_paged`, `s_execute`, `s_execute_paged`, `s_batch`, `s_prepare`, `s_prepare_batch`, `s_use_keyspace`, `s_refresh_metadata`, `s_await_schema_agreement`, `s_await_timed_schema_agreement`, `s_check_schema_agreement`, `s_fetch_schema_version`, `s_get_tracing_info`.
@@ -47,7 +47,7 @@ Each top-level `<name>.rs` holds the NIF handlers for one area. The matching `<n
   4. Replies with `{opaque, result}` via `send_and_clear`.
 
   The NIF returns `:ok` right away. Never use `block_on`.
-- Async NIFs decode their arguments (`decode_values`, and the tracing UUID in `s_get_tracing_info`, which raises `invalid_uuid`) **before** spawning. A malformed argument fails the NIF call synchronously (raises in Elixir) instead of producing an `{opaque, {:error, _}}` message.
+- `s_query`, `s_execute` and their `_paged` variants use `async_elixir_decoded!` (`utils.rs`): the bound values are copied into the `OwnedEnv` and decoded on the Tokio worker, not the BEAM scheduler. A malformed value is replied as `{opaque, {:error, {:parse_value, msg}}}` instead of raising. `s_batch` decodes synchronously (copying large value lists into the owned env was slower in benchmarks) and returns `{:error, {:parse_value, msg}}` directly from the NIF call. Other async NIFs also decode synchronously (for example `s_get_tracing_info` raises `invalid_uuid` on a bad id).
 - Statement resources (`Query`, `PreparedStatement`, `Batch`) are copy-on-write: setters `to_owned()` the inner value and return a new `ResourceArc`. The exception is `{q,ps,b}_set_retry_policy` (and the matching getters), which return the atom `:not_implemented_yet`. `b_set_retry_policy` takes an extra unused `bool` argument. Builder resources (`SessionBuilder`, the execution-profile builder, and the load-balancing builders) are mutated in place under a `Mutex` and return the same `ResourceArc`.
 - `sb_build` takes the builder out of its `Cell`, leaving a default `SessionBuilder` in the resource.
 - `s_query`, `s_execute`, and `s_batch` use the driver's unpaged APIs (`query_unpaged`, `execute_unpaged`, `batch`). `s_query_paged` and `s_execute_paged` fetch a single page and return `paging_state` only when more pages exist. A `nil` input paging state means `PagingState::start()`.
@@ -62,7 +62,7 @@ Each top-level `<name>.rs` holds the NIF handlers for one area. The matching `<n
 - `lib.rs` `load/2` starts a process-global multi-threaded Tokio runtime when the NIF library loads. The runtime lives for the life of the VM.
 - `sb_build` opens TCP connections to ScyllaDB/Cassandra nodes. The session then runs background metadata, keepalive, and pool tasks on the shared runtime.
 - Async `s_*` NIFs send CQL requests over the network and send exactly one message `{opaque, result}` to the calling PID when they finish.
-- `s_use_keyspace` and `s_refresh_metadata` change session-wide state.
+- `s_use_keyspace` and `s_refresh_metadata` change session-wide state. A failed `s_use_keyspace` leaves the session with no usable connections until a later switch succeeds. The driver stores the name before validating it, and since 1.10 it removes connections that fail the switch.
 - Result rows are handed to Elixir as resource-backed binaries (`ScyllaRawRowsResource`). The bytes stay alive as long as Elixir references the binary.
 
 ## Verification

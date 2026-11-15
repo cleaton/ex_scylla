@@ -26,7 +26,7 @@
 
 ## Testing
 
-Tests use TestContainers to automatically manage ScyllaDB instances (`scylladb/scylla:2026.2`). Ensure Docker is running before executing tests.
+Tests use TestContainers to automatically manage ScyllaDB instances (`scylladb/scylla:2026.3`). Ensure Docker is running before executing tests.
 
 ```bash
 # Run the full test suite
