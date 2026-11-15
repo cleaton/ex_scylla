@@ -41,7 +41,7 @@ mise run build
 
 ## Running Tests
 
-Tests use Testcontainers to automatically orchestrate isolated ScyllaDB instances (`scylladb/scylla:2026.2`). Ensure Docker is running.
+Tests use Testcontainers to automatically orchestrate isolated ScyllaDB instances (`scylladb/scylla:2026.3`). Ensure Docker is running.
 
 ```bash
 # Run full test suite
@@ -82,7 +82,7 @@ mise run bench query_stream
 
 ## Standalone ScyllaDB for Manual Testing
 
-To run a persistent ScyllaDB 2026.2 container for local experimentation or iex sessions:
+To run a persistent ScyllaDB 2026.3 container for local experimentation or iex sessions:
 
 ```bash
 # Foreground container

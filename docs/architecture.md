@@ -19,7 +19,7 @@ ExScylla is designed as a minimal, high-performance bridge between Elixir / BEAM
                                v
 +-------------------------------------------------------------+
 |                    Dedicated Tokio Runtime                  |
-|                   scylla Rust Driver (v1.8.0)               |
+|                   scylla Rust Driver (v1.10.0)              |
 +------------------------------+------------------------------+
                                | (CQL Binary Protocol v4)
                                v

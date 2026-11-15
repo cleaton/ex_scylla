@@ -3,13 +3,17 @@ use rustler::types::Atom;
 use rustler::{NifTaggedEnum, NifTuple};
 pub use scylla::errors::{
     BadKeyspaceName, BadQuery, DbError, ExecutionError as QueryError, NewSessionError,
-    RequestAttemptError, TranslationError,
+    PrepareError, RequestAttemptError, TranslationError,
 };
 pub use scylla::serialize::SerializationError as SerializeValuesError;
 pub use scylla::statement::prepared::PartitionKeyError;
 
 rustler::atoms! {
     parse_value,
+}
+
+pub fn parse_value_atom() -> Atom {
+    parse_value()
 }
 
 // Update ExScylla.Types.Errors.QueryError on change
@@ -27,16 +31,41 @@ pub enum ScyllaQueryError {
     TranslationError(ScyllaTranslationError),
 }
 
+// Maps the error of a single request attempt to the Elixir error tags.
+// Connection-level failures stay `:io_error`; everything else gets its own tag.
+fn attempt_error(rae: RequestAttemptError) -> ScyllaQueryError {
+    let msg = rae.to_string();
+    match rae {
+        RequestAttemptError::DbError(dbe, db_msg) => {
+            ScyllaQueryError::DbError(dbe.ex_with_msg(db_msg))
+        }
+        RequestAttemptError::SerializationError(e) => {
+            ScyllaQueryError::BadQuery(ScyllaBadQuery::SerializeValuesError(
+                ScyllaSerializeValuesError::ParseError(e.to_string()),
+            ))
+        }
+        RequestAttemptError::UnableToAllocStreamId => ScyllaQueryError::UnableToAllocStreamId(msg),
+        RequestAttemptError::BrokenConnectionError(_) => ScyllaQueryError::IoError(msg),
+        RequestAttemptError::BodyExtensionsParseError(_)
+        | RequestAttemptError::CqlResultParseError(_)
+        | RequestAttemptError::CqlErrorParseError(_) => ScyllaQueryError::InvalidMessage(msg),
+        _ => ScyllaQueryError::ProtocolError(msg),
+    }
+}
+
 to_elixir!(QueryError, ScyllaQueryError, |qe: QueryError| {
+    let msg = qe.to_string();
     match qe {
-        QueryError::LastAttemptError(rae) => match rae {
-            RequestAttemptError::DbError(dbe, msg) => {
-                ScyllaQueryError::DbError(dbe.ex_with_msg(msg))
-            }
-            _ => ScyllaQueryError::IoError(rae.to_string()),
-        },
+        QueryError::LastAttemptError(rae) => attempt_error(rae),
         QueryError::BadQuery(bq) => ScyllaQueryError::BadQuery(bq.ex()),
-        _ => ScyllaQueryError::IoError(qe.to_string()),
+        QueryError::RequestTimeout(_) => ScyllaQueryError::RequestTimeout(msg),
+        QueryError::PrepareError(PrepareError::AllAttemptsFailed { first_attempt }) => {
+            attempt_error(first_attempt)
+        }
+        QueryError::PrepareError(PrepareError::PreparedStatementIdsMismatch) => {
+            ScyllaQueryError::ProtocolError(msg)
+        }
+        _ => ScyllaQueryError::IoError(msg),
     }
 });
 
@@ -129,6 +158,8 @@ pub enum ScyllaBadQuery {
     SerializeValuesError(ScyllaSerializeValuesError),
     ValuesTooLongForKey(String),
     BadKeyspaceName(ScyllaBadKeyspaceName),
+    PartitionKeyExtraction(String),
+    TooManyQueriesInBatchStatement(String),
     Other(String),
 }
 
@@ -139,6 +170,10 @@ to_elixir!(BadQuery, ScyllaBadQuery, |bq: BadQuery| {
             ScyllaSerializeValuesError::ParseError(e.to_string()),
         ),
         BadQuery::ValuesTooLongForKey(_, _) => ScyllaBadQuery::ValuesTooLongForKey(msg),
+        BadQuery::PartitionKeyExtraction => ScyllaBadQuery::PartitionKeyExtraction(msg),
+        BadQuery::TooManyQueriesInBatchStatement(_) => {
+            ScyllaBadQuery::TooManyQueriesInBatchStatement(msg)
+        }
         _ => ScyllaBadQuery::Other(msg),
     }
 });
@@ -171,6 +206,9 @@ pub enum ScyllaNewSessionError {
     UnableToAllocStreamId(String),
     RequestTimeout(String),
     TranslationError(ScyllaTranslationError),
+    MetadataError(String),
+    UseKeyspaceError(String),
+    IllegalConfig(String),
 }
 to_elixir!(
     NewSessionError,
@@ -182,6 +220,15 @@ to_elixir!(
             }
             NewSessionError::EmptyKnownNodesList => {
                 ScyllaNewSessionError::EmptyKnownNodesList(nse.to_string())
+            }
+            NewSessionError::MetadataError(_) => {
+                ScyllaNewSessionError::MetadataError(nse.to_string())
+            }
+            NewSessionError::UseKeyspaceError(_) => {
+                ScyllaNewSessionError::UseKeyspaceError(nse.to_string())
+            }
+            NewSessionError::IllegalConfig(_) => {
+                ScyllaNewSessionError::IllegalConfig(nse.to_string())
             }
             _ => ScyllaNewSessionError::IoError(nse.to_string()),
         }
@@ -201,6 +248,7 @@ to_elixir!(
         let msg = bkn.to_string();
         match bkn {
             BadKeyspaceName::Empty => ScyllaBadKeyspaceName::Empty(msg),
+            BadKeyspaceName::TooLong(_, _) => ScyllaBadKeyspaceName::TooLong(msg),
             _ => ScyllaBadKeyspaceName::IllegalCharacter(msg),
         }
     }
@@ -209,13 +257,20 @@ to_elixir!(
 pub enum ScyllaPartitionKeyError {
     NoPkIndexValue(String),
     ValueTooLong(String),
+    SerializationError(String),
 }
 to_elixir!(
     PartitionKeyError,
     ScyllaPartitionKeyError,
     |pke: PartitionKeyError| {
         let msg = pke.to_string();
-        ScyllaPartitionKeyError::ValueTooLong(msg)
+        match pke {
+            PartitionKeyError::PartitionKeyExtraction(_) => {
+                ScyllaPartitionKeyError::NoPkIndexValue(msg)
+            }
+            PartitionKeyError::Serialization(_) => ScyllaPartitionKeyError::SerializationError(msg),
+            _ => ScyllaPartitionKeyError::ValueTooLong(msg),
+        }
     }
 );
 

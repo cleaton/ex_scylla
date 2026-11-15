@@ -1,8 +1,8 @@
 [tools]
-rust = "1.97.1"
-erlang = "28.4.1"
-elixir = "1.19.5-otp-28"
-"cargo:grcov" = "0.10.7"
+rust = "1.100.0"
+erlang = "29.1.2"
+elixir = "1.20.5-otp-29"
+"cargo:grcov" = "0.10.8"
 
 [tasks."deps:get"]
 description = "Fetch Mix dependencies"
@@ -116,11 +116,11 @@ run = "mix bench $@"
 
 [tasks."scylla:run"]
 description = "Run standalone ScyllaDB container in foreground (replaces run_scylla.sh)"
-run = "docker run --net=host --name exscylla scylladb/scylla:2026.2 --developer-mode 1 --listen-address 127.0.0.1"
+run = "docker run --net=host --name exscylla scylladb/scylla:2026.3 --developer-mode 1 --listen-address 127.0.0.1"
 
 [tasks."scylla:start"]
 description = "Start standalone ScyllaDB container in background"
-run = "docker run -d --rm --net=host --name exscylla scylladb/scylla:2026.2 --developer-mode 1 --listen-address 127.0.0.1"
+run = "docker run -d --rm --net=host --name exscylla scylladb/scylla:2026.3 --developer-mode 1 --listen-address 127.0.0.1"
 
 [tasks."scylla:stop"]
 description = "Stop standalone ScyllaDB container"

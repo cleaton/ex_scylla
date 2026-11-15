@@ -39,6 +39,7 @@ Benchee.run(
   %{
     "async_query" => {
       fn {input, keys} ->
+        Process.flag(:message_queue_data, :off_heap)
         Enum.map(input, fn _ ->
           key = Enum.random(keys)
           Session.async_execute(session, ps, [{:text, key}])

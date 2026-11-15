@@ -15,4 +15,7 @@ defmodule ExScylla.Types.Errors.BadQuery do
           {:serialize_values_error, SerializeValuesError.t()}
           | {:values_too_long_for_key, msg()}
           | {:bad_keyspace_name, BadKeyspaceName.t()}
+          | {:partition_key_extraction, msg()}
+          | {:too_many_queries_in_batch_statement, msg()}
+          | {:other, msg()}
 end

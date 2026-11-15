@@ -1,6 +1,6 @@
 [package]
 name = "ex_scylla"
-version = "0.10.2"
+version = "0.11.0"
 authors = []
 edition = "2021"
 
@@ -10,15 +10,13 @@ path = "src/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-rustler = { version = "0.38.0" }
-scylla = { version = "1.8.0", features = ["full-serialization", "metrics", "chrono-04", "bigdecimal-04", "num-bigint-04", "unstable-nodejs-rs"] }
-scylla-cql = { version = "1.8.0", features = ["full-serialization", "unstable-nodejs-rs"] }
-bytes = "1.10"
-tokio = { version = "^1.32", features = ["full"] }
-futures = "^0.3"
-uuid = "^1.4"
-bigdecimal = "^0.4"
-chrono = "^0.4"
-num-bigint = "^0.4"
-tracing = "^0.1"
-tracing-subscriber = "^0.3"
+rustler = { version = "0.39.0" }
+scylla = { version = "=1.10.0", features = ["full-serialization", "metrics", "chrono-04", "bigdecimal-04", "num-bigint-04", "unstable-nodejs-rs"] }
+bytes = "1.12"
+tokio = { version = "^1.54", features = ["full"] }
+futures = "^0.3.34"
+uuid = "^1.29"
+bigdecimal = "^0.4.11"
+chrono = "^0.4.45"
+num-bigint = "^0.5.1"
+tracing = "^0.1.44"

@@ -31,7 +31,7 @@ defmodule ExScylla.Types do
   @type transport_compression :: :lz4 | :snappy
   @type load_balancing_policy :: load_balancing_policy_resource()
   @type pool_size :: {:per_host, pos_integer()} | {:per_shard, pos_integer()}
-  @type retry_policy :: :default_retry_policy | :fall_through_retry_policy
+  @type retry_policy :: :default_retry_policy | :fallthrough_retry_policy
   @type speculative_execution_policy ::
           SimpleSpeculativeExecutionPolicy.t() | PercentileSpeculativeExecutionPolicy.t()
   @type serial_consistency :: :serial | :local_serial

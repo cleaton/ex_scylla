@@ -31,6 +31,7 @@ defmodule ExScylla.Macros.Native do
     prefix = Keyword.get(opts, :prefix)
     docs_rs_path = Keyword.get(opts, :docs_rs_path)
     docs_rs_crate = Keyword.get(opts, :docs_rs_crate, :scylla)
+    moduledoc_extra = Keyword.get(opts, :moduledoc_extra, "")
 
     docs_rs_base =
       case docs_rs_crate do
@@ -51,7 +52,7 @@ defmodule ExScylla.Macros.Native do
     Module.register_attribute(__CALLER__.module, :prefix, persist: true)
     Module.put_attribute(__CALLER__.module, :prefix, prefix)
 
-    for {k, v} <- Keyword.drop(opts, [:prefix, :docs_rs_path, :docs_rs_crate]) do
+    for {k, v} <- Keyword.drop(opts, [:prefix, :docs_rs_path, :docs_rs_crate, :moduledoc_extra]) do
       Module.register_attribute(__CALLER__.module, k, persist: true)
       Module.put_attribute(__CALLER__.module, k, v)
     end
@@ -59,6 +60,8 @@ defmodule ExScylla.Macros.Native do
     module_doc = """
     Wrapper around rust module
     See rust documentation for more usage details: #{docs_url}
+
+    #{moduledoc_extra}
     """
 
     quote do

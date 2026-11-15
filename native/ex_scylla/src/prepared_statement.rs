@@ -22,10 +22,14 @@ fn ps_compute_partition_key<'a>(
     bound_values: Vec<Term<'a>>,
 ) -> NifResult<ScyllaBinary> {
     let ps: &PreparedStatement = &ps.0;
-    let mut cql_values: Vec<CqlValue> = Vec::new();
+    let mut cql_values: Vec<Option<CqlValue>> = Vec::with_capacity(bound_values.len());
     for term in bound_values {
-        let sv: ScyllaValue = term.decode()?;
-        cql_values.push(sv.into());
+        let sv: Option<ScyllaValue> = term.decode()?;
+        let cql = sv
+            .map(CqlValue::try_from)
+            .transpose()
+            .map_err(|msg| Error::Term(Box::new((crate::errors::parse_value_atom(), msg))))?;
+        cql_values.push(cql);
     }
     ps.compute_partition_key(&cql_values)
         .map(|b| b.into())

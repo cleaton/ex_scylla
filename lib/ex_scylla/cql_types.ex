@@ -6,6 +6,15 @@ defmodule ExScylla.CqlTypes do
   @spec decode_value(binary(), atom() | tuple()) :: term()
   def decode_value(bin, type)
 
+  # A zero-length cell (an "empty value", distinct from NULL) can be written for any
+  # type, by binding `:empty` or by other clients. Text, ascii, blob, custom, tuple
+  # and UDT types have a meaningful empty form (UDTs may omit trailing fields); for
+  # every other type it decodes to nil.
+  def decode_value(<<>>, type)
+      when type not in [:text, :ascii, :blob] and
+             not (is_tuple(type) and elem(type, 0) in [:custom, :tuple, :user_defined_type]),
+      do: nil
+
   def decode_value(bin, :int) do
     <<val::signed-size(32)>> = bin
     val
@@ -47,11 +56,12 @@ defmodule ExScylla.CqlTypes do
   def decode_value(bin, :ascii), do: bin
   def decode_value(bin, :blob), do: bin
 
-  def decode_value(bin, :uuid) do
-    <<u1::binary-size(4), u2::binary-size(2), u3::binary-size(2), u4::binary-size(2),
-      u5::binary-size(6)>> = bin
+  def decode_value(<<_::binary-size(16)>> = bin, :uuid) do
+    # One hex encode for all 16 bytes, then splice in the hyphens (8-4-4-4-12).
+    <<a::binary-size(8), b::binary-size(4), c::binary-size(4), d::binary-size(4),
+      e::binary-size(12)>> = Base.encode16(bin, case: :lower)
 
-    "#{Base.encode16(u1, case: :lower)}-#{Base.encode16(u2, case: :lower)}-#{Base.encode16(u3, case: :lower)}-#{Base.encode16(u4, case: :lower)}-#{Base.encode16(u5, case: :lower)}"
+    <<a::binary, ?-, b::binary, ?-, c::binary, ?-, d::binary, ?-, e::binary>>
   end
 
   def decode_value(bin, :timeuuid), do: decode_value(bin, :uuid)
@@ -133,15 +143,28 @@ defmodule ExScylla.CqlTypes do
     decode_tuple(bin, types, [])
   end
 
-  def decode_value(bin, {:user_defined_type, fields}) do
+  # Column metadata from the NIF describes a UDT column as a struct.
+  def decode_value(bin, {:user_defined_type, %ExScylla.Types.UserDefinedColumnType{} = udt}) do
+    decode_udt(bin, udt.field_types, %{})
+  end
+
+  def decode_value(bin, {:user_defined_type, fields}) when is_list(fields) do
     decode_udt(bin, fields, %{})
+  end
+
+  # CQL duration: three zigzag-encoded vints (months, days, nanoseconds).
+  def decode_value(bin, :duration) do
+    {months, rest} = decode_signed_vint(bin)
+    {days, rest} = decode_signed_vint(rest)
+    {nanoseconds, <<>>} = decode_signed_vint(rest)
+    %ExScylla.Types.CqlDuration{months: months, days: days, nanoseconds: nanoseconds}
   end
 
   def decode_value(bin, _unknown_type), do: bin
 
   defp decode_varint(bin) do
     bits = byte_size(bin) * 8
-    <<val::signed-size(bits)>> = bin
+    <<val::signed-size(^bits)>> = bin
     val
   end
 
@@ -153,7 +176,7 @@ defmodule ExScylla.CqlTypes do
         decode_collection(rest, count - 1, type, [nil | acc])
 
       _ ->
-        <<val_bin::binary-size(len), remaining::binary>> = rest
+        <<val_bin::binary-size(^len), remaining::binary>> = rest
         val = decode_value(val_bin, type)
         decode_collection(remaining, count - 1, type, [val | acc])
     end
@@ -168,7 +191,7 @@ defmodule ExScylla.CqlTypes do
           {nil, rest1}
 
         _ ->
-          <<k_bin::binary-size(klen), rem1::binary>> = rest1
+          <<k_bin::binary-size(^klen), rem1::binary>> = rest1
           {decode_value(k_bin, ktype), rem1}
       end
 
@@ -180,7 +203,7 @@ defmodule ExScylla.CqlTypes do
           {nil, rest3}
 
         _ ->
-          <<v_bin::binary-size(vlen), rem2::binary>> = rest3
+          <<v_bin::binary-size(^vlen), rem2::binary>> = rest3
           {decode_value(v_bin, vtype), rem2}
       end
 
@@ -195,7 +218,7 @@ defmodule ExScylla.CqlTypes do
         decode_tuple(rest, types, [nil | acc])
 
       _ ->
-        <<val_bin::binary-size(len), remaining::binary>> = rest
+        <<val_bin::binary-size(^len), remaining::binary>> = rest
         val = decode_value(val_bin, type)
         decode_tuple(remaining, types, [val | acc])
     end
@@ -211,11 +234,30 @@ defmodule ExScylla.CqlTypes do
         decode_udt(rest, fields, Map.put(acc, name, nil))
 
       _ ->
-        <<val_bin::binary-size(len), remaining::binary>> = rest
+        <<val_bin::binary-size(^len), remaining::binary>> = rest
         val = decode_value(val_bin, type)
         decode_udt(remaining, fields, Map.put(acc, name, val))
     end
   end
 
   defp decode_udt(<<>>, _fields, acc), do: acc
+
+  # Cassandra vint: the number of leading 1 bits in the first byte is the number of
+  # extra bytes; the remaining bits of the first byte are the high bits of the value.
+  defp decode_signed_vint(<<first, rest::binary>>) do
+    extra = leading_ones(first, 7, 0)
+    first_bits = if extra >= 7, do: 0, else: Bitwise.band(first, Bitwise.bsr(0xFF, extra + 1))
+    <<more::binary-size(^extra), remaining::binary>> = rest
+    unsigned = :binary.bin_to_list(more) |> Enum.reduce(first_bits, &(&2 * 256 + &1))
+    signed = Bitwise.bxor(Bitwise.bsr(unsigned, 1), -Bitwise.band(unsigned, 1))
+    {signed, remaining}
+  end
+
+  defp leading_ones(_byte, -1, count), do: count
+
+  defp leading_ones(byte, bit, count) do
+    if Bitwise.band(byte, Bitwise.bsl(1, bit)) != 0,
+      do: leading_ones(byte, bit - 1, count + 1),
+      else: count
+  end
 end

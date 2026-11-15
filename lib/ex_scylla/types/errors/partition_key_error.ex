@@ -12,4 +12,5 @@ defmodule ExScylla.Types.Errors.PartitionKeyError do
   @type t ::
           {:no_pk_index_value, msg()}
           | {:value_too_long, msg()}
+          | {:serialization_error, msg()}
 end

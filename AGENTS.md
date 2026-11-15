@@ -67,7 +67,7 @@ ExScylla provides two execution paths:
 
 ## 4. Common Pitfalls & Rules
 
-1. **Docker Requirement**: Tests run against a live ScyllaDB instance managed by Testcontainers (`scylladb/scylla:2026.2`). Docker must be running before starting `mise run test`.
+1. **Docker Requirement**: Tests run against a live ScyllaDB instance managed by Testcontainers (`scylladb/scylla:2026.3`). Docker must be running before starting `mise run test`.
 2. **Dual-Layer Synchronization**: When adding a function or type, always update both layers:
    - Add/update the Rust NIF in `native/ex_scylla/src/` and register it in `lib.rs` if it is a resource.
    - Add the NIF signature in `lib/ex_scylla/native.ex`.

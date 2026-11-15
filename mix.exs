@@ -4,8 +4,8 @@ defmodule ExScylla.MixProject do
   def project do
     [
       app: :ex_scylla,
-      version: "0.10.2",
-      elixir: "~> 1.13",
+      version: "0.11.0",
+      elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       test_coverage: [
         tool: LcovEx,
@@ -63,7 +63,7 @@ defmodule ExScylla.MixProject do
           {_, res} =
             System.cmd("mix", ["run", filename],
               into: IO.binstream(:stdio, :line),
-              env: [{"MIX_ENV", "bench"}]
+              env: [{"MIX_ENV", "bench"} | erlcass_build_env()]
             )
 
           if res > 0 do
@@ -76,6 +76,27 @@ defmodule ExScylla.MixProject do
       _ ->
         Mix.shell().error("Usage: mix bench <benchmark_name>")
     end
+  end
+
+  # erlcass (bench-only) generates c_src/env.mk with `erl -s init stop -eval ...`.
+  # On OTP 29, init:stop runs before the -eval, so env.mk is never written and the
+  # build fails. Write the file here instead and point erlcass's Makefile at it
+  # (C_SRC_ENV is `?=` there). The Makefile still runs its own generation step,
+  # which prints "Error! Failed to eval" on OTP 29 but writes nothing, so the build
+  # uses this file. Remove once erlcass fixes the `erl` argument order upstream.
+  defp erlcass_build_env do
+    path = Path.expand("_build/bench/erlcass_env.mk")
+    erl_interface = :code.lib_dir(:erl_interface)
+
+    File.mkdir_p!(Path.dirname(path))
+
+    File.write!(path, """
+    ERTS_INCLUDE_DIR ?= #{:code.root_dir()}/erts-#{:erlang.system_info(:version)}/include/
+    ERL_INTERFACE_INCLUDE_DIR ?= #{erl_interface}/include
+    ERL_INTERFACE_LIB_DIR ?= #{erl_interface}/lib
+    """)
+
+    [{"C_SRC_ENV", path}]
   end
 
   # Run "mix help compile.app" to learn about applications.
@@ -104,10 +125,10 @@ defmodule ExScylla.MixProject do
     [
       {:rustler, "~> 0.38.0"},
       {:testcontainers, "~> 2.4", only: [:test, :bench]},
-      {:lcov_ex, "~> 0.3", only: [:test], runtime: false},
-      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      {:lcov_ex, "~> 0.3.6", only: [:test], runtime: false},
+      {:ex_doc, "~> 0.40.4", only: :dev, runtime: false},
       {:benchee, "~> 1.5", only: [:bench]},
-      {:erlcass, "~> 4.1", only: [:bench], runtime: false}
+      {:erlcass, "~> 4.1.5", only: [:bench], runtime: false}
     ]
   end
 end

@@ -23,5 +23,9 @@ defmodule ExScylla.Types.Errors.NewSessionError do
           | {:timeout_error, msg()}
           | {:too_many_orphaned_stream_ids, msg()}
           | {:unable_to_alloc_stream_id, msg()}
+          | {:request_timeout, msg()}
           | {:translation_error, TranslationError.t()}
+          | {:metadata_error, msg()}
+          | {:use_keyspace_error, msg()}
+          | {:illegal_config, msg()}
 end

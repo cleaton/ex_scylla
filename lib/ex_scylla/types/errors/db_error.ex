@@ -17,7 +17,7 @@ defmodule ExScylla.Types.Errors.DbError do
           | {:authentication_error, msg()}
           | {:unauthorized, msg()}
           | {:config_error, msg()}
-          | {:unavaliable, msg()}
+          | {:unavailable, msg()}
           | {:overloaded, msg()}
           | {:is_bootstrapping, msg()}
           | {:truncate_error, msg()}
@@ -28,5 +28,6 @@ defmodule ExScylla.Types.Errors.DbError do
           | {:unprepared, msg()}
           | {:server_error, msg()}
           | {:protocol_error, msg()}
+          | {:rate_limit_reached, msg()}
           | {:other, msg()}
 end

@@ -9,7 +9,7 @@ defmodule ExScylla.Execution.ExecutionProfileHandle do
     func: :map_to_another_profile,
     args: [eph, profile],
     args_spec: [T.execution_profile_handle(), T.execution_profile()],
-    return_spec: T.execution_profile_builder(),
+    return_spec: :ok,
     doc_example: """
     iex> ep = ExecutionProfile.builder() |> ExecutionProfileBuilder.build()
     iex> eph = ExecutionProfile.builder()
