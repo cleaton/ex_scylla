@@ -26,6 +26,7 @@
 - **Tests and benchmarks**: ScyllaDB image `scylladb/scylla:2026.3`. `EX_SCYLLA_TEST_SMP` sets the shard count, and `EX_SCYLLA_TOKIO_WORKERS` (bench env) sets the worker count.
 
 ### Fixed
+- **The Hex package builds again**: it now ships `native/ex_scylla/.cargo/config.toml` and `build.rs`. Without the config, the `scylla` dependency was compiled without `--cfg scylla_unstable` and the crate failed to build (`no method named raw_rows_with_metadata`) unless the user set `RUSTFLAGS` themselves. 0.10.x packages had the same gap.
 - **NULL can be bound**: `nil` in a bound-value list binds NULL (`query`, `execute`, `batch`, the paged variants, `compute_partition_key` and the token functions). Before, `nil` was rejected and the only option was `:empty`, which stores a zero-length value, not NULL.
 - **Reading an empty (zero-length) cell no longer crashes**: for types without an empty form (`int`, `uuid`, `timestamp`, ...) it decodes to `nil`, and typed rows show it as a bare `nil`, like NULL. Such cells come from binding `:empty` or from other clients. `text`, `ascii` and `blob` still decode to `""`.
 - UDT columns failed to decode, because the column metadata struct and `CqlTypes` disagreed on its shape.

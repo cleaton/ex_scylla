@@ -91,7 +91,7 @@ Request flow for an I/O call such as `Session.query/3`:
   - Aliases:
     - `test` re-runs `mix test.wrapper` (which calls `Mix.Tasks.Test.run/1`) in a subprocess. It passes `MIX_ENV`, `RUSTFLAGS="-C instrument-coverage --cfg scylla_unstable"` and `--color`/`--no-color`.
     - `bench` (`run_bench/1`) runs `mix run bench/<name>.exs` with `MIX_ENV=bench`.
-  - The Hex package (`package/0`) ships `lib`, `priv/native/.place_holder`, `native/ex_scylla/src`, `native/ex_scylla/Cargo.*`, `.formatter.exs`, `mix.exs` and `README*`.
+  - The Hex package (`package/0`) ships `lib`, `priv/native/.place_holder`, `native/ex_scylla/src`, `native/ex_scylla/Cargo.*`, `native/ex_scylla/build.rs`, `native/ex_scylla/.cargo/config.toml` (needed for `--cfg scylla_unstable`), `.formatter.exs`, `mix.exs` and `README*`.
 - `.formatter.exs`: formats `{mix,.formatter}.exs` and `{config,lib,test}/**/*.{ex,exs}`.
 - `mise.toml` defines all workflow tasks (`deps:get`, `compile`, `lint`, `format`, `build`, `test`, `test:coverage`, `install-test-deps`, `bench`, `scylla:*`). Add new commands there, not in a `Makefile`.
 - The package version in `mix.exs` and the crate version in `native/ex_scylla/Cargo.toml` move together (both `0.11.0`).
