@@ -2,7 +2,6 @@ defmodule ExScylla.Statement.Prepared do
   alias ExScylla.Types, as: T
   alias ExScylla.Types.PreparedMetadata
   alias ExScylla.Types.Errors.PartitionKeyError
-  alias ExScylla.Types.Errors.SerializeValuesError
 
   use ExScylla.Macros.Native,
     prefix: :ps,
@@ -21,8 +20,7 @@ defmodule ExScylla.Statement.Prepared do
     func: :compute_partition_key,
     args: [ps, bound_values],
     args_spec: [T.prepared_statement(), T.values()],
-    return_spec:
-      {:ok, binary()} | T.parse_error() | SerializeValuesError.t() | PartitionKeyError.t(),
+    return_spec: binary() | T.parse_error() | {:error, PartitionKeyError.t()},
     example_setup: :ps_setup,
     doc_example: """
     iex> p_key = Prepared.compute_partition_key(ps, [{:text, "hi"}, {:int, 123}])

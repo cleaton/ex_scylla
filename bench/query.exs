@@ -105,6 +105,7 @@ Benchee.run(
   %{
     "erlcass" => {
       fn {input, _} ->
+        Process.flag(:message_queue_data, :off_heap)
         Enum.map(input, fn _ -> :erlcass.async_execute(:testing_query, [Enum.random(args)]) end)
         |> Enum.map(fn {:ok, _Tag} ->
           receive do
@@ -123,10 +124,13 @@ Benchee.run(
       },
       "exscylla" => {
         fn {input, _} ->
+          Process.flag(:message_queue_data, :off_heap)
           Enum.map(input, fn _ -> Session.async_execute(session, ps, [{:text, Enum.random(args)}]) end)
           |> Enum.map(fn {:ok, _Tag} ->
             receive do
-              {{:execute, _}, {:ok, _}} ->
+              # async_* replies carry undecoded rows; decode like the sync API does.
+              {{:execute, _}, {:ok, qr}} ->
+                ExScylla.Types.QueryResult.decode(qr)
                 :ok
               other ->
                 IO.inspect(other)
@@ -141,10 +145,12 @@ Benchee.run(
         },
       "exscylla_raw" => {
         fn {input, _} ->
+          Process.flag(:message_queue_data, :off_heap)
           Enum.map(input, fn _ -> Session.async_execute_raw(session, ps, [{:text, Enum.random(args)}]) end)
           |> Enum.map(fn {:ok, _Tag} ->
             receive do
-              {{:execute_raw, _}, {:ok, _}} ->
+              {{:execute_raw, _}, {:ok, qr}} ->
+                ExScylla.Types.QueryResult.decode_raw(qr)
                 :ok
               other ->
                 IO.inspect(other)

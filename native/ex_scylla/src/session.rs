@@ -15,13 +15,52 @@ use scylla::statement::batch::Batch;
 use scylla::value::CqlValue;
 use types::*;
 
-fn decode_values<'a>(values: Vec<Term<'a>>) -> NifResult<Vec<CqlValue>> {
-    let mut cql_values: Vec<CqlValue> = Vec::new();
-    for term in values {
-        let sv: ScyllaValue = term.decode()?;
-        cql_values.push(sv.into());
+// Bound values: `nil` binds NULL (`None`), anything else must be a tagged value.
+type BoundValues = Vec<Option<CqlValue>>;
+
+fn decode_bound_value(term: Term<'_>) -> Result<Option<CqlValue>, String> {
+    let sv: Option<ScyllaValue> = term
+        .decode()
+        .map_err(|_| format!("invalid value: {:?}", term))?;
+    sv.map(CqlValue::try_from).transpose()
+}
+
+// Decodes a list term of bound values. Errors become `{:error, {:parse_value, msg}}`.
+fn decode_value_list(values: Term<'_>) -> Result<BoundValues, ParseValueError> {
+    let terms: Vec<Term> = values
+        .decode()
+        .map_err(|_| ParseValueError("values must be a list".to_owned()))?;
+    terms
+        .into_iter()
+        .map(|t| decode_bound_value(t).map_err(ParseValueError))
+        .collect()
+}
+
+fn decode_batch_values(values: Term<'_>) -> Result<Vec<BoundValues>, ParseValueError> {
+    let rows: Vec<Term> = values
+        .decode()
+        .map_err(|_| ParseValueError("batch values must be a list of lists".to_owned()))?;
+    rows.into_iter().map(decode_value_list).collect()
+}
+
+struct ParseValueError(String);
+
+impl Encoder for ParseValueError {
+    fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+        (
+            atom::error(),
+            (crate::errors::parse_value_atom(), self.0.as_str()),
+        )
+            .encode(env)
     }
-    Ok(cql_values)
+}
+
+// Token helpers return a token or nil; malformed input raises ArgumentError.
+fn decode_values(values: Vec<Term<'_>>) -> NifResult<BoundValues> {
+    values
+        .into_iter()
+        .map(|t| decode_bound_value(t).map_err(|_| rustler::Error::BadArg))
+        .collect()
 }
 
 // async_elixir! returns a NifResult that is intentionally ignored here because it's handled via the opaque token callback.
@@ -76,20 +115,22 @@ fn s_batch<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     batch: ResourceArc<BatchResource>,
-    values: Vec<Vec<Term<'a>>>,
-) -> NifResult<Atom> {
-    let mut row_values: Vec<Vec<CqlValue>> = Vec::new();
-    for row_terms in values {
-        row_values.push(decode_values(row_terms)?);
-    }
-
+    values: Term<'a>,
+) -> NifResult<Term<'a>> {
+    // Batches decode on the scheduler: for large value lists, copying the terms into
+    // an owned env costs more than decoding them in place (measured, see the 0.11.0
+    // upgrade report). A malformed value is returned directly as
+    // `{:error, {:parse_value, msg}}`.
+    let row_values = match decode_batch_values(values) {
+        Ok(row_values) => row_values,
+        Err(e) => return Ok(e.encode(env)),
+    };
     async_elixir!(
         env,
         opaque,
         {
-            let session: &Session = &session.0;
             let batch: &Batch = &batch.0;
-            session.batch(batch, row_values).await
+            session.0.batch(batch, row_values).await
         },
         |env, res| {
             match res {
@@ -98,7 +139,7 @@ fn s_batch<'a>(
             }
         }
     )
-    .map(|_| atom::ok())
+    .map(|_| atom::ok().encode(env))
 }
 
 #[rustler::nif]
@@ -160,17 +201,14 @@ fn s_execute<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     prepared: ResourceArc<PreparedStatementResource>,
-    values: Vec<Term<'a>>,
+    values: Term<'a>,
 ) -> NifResult<Atom> {
-    let cql_values = decode_values(values)?;
-
-    async_elixir!(
+    async_elixir_decoded!(
         env,
         opaque,
-        {
-            let session: &Session = &session.0;
-            session.execute_unpaged(&prepared.0, cql_values).await
-        },
+        values,
+        decode_value_list,
+        |cql_values| session.0.execute_unpaged(&prepared.0, cql_values).await,
         |env, res| {
             match res {
                 Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
@@ -189,19 +227,20 @@ fn s_execute_paged<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     prepared: ResourceArc<PreparedStatementResource>,
-    values: Vec<Term<'a>>,
+    values: Term<'a>,
     paging_state: Option<ScyllaPageState>,
 ) -> NifResult<Atom> {
-    let cql_values = decode_values(values)?;
     let paging_state = paging_state
         .map(|s| s.0)
         .unwrap_or(scylla::response::PagingState::start());
-    async_elixir!(
+    async_elixir_decoded!(
         env,
         opaque,
-        {
-            let session: &Session = &session.0;
+        values,
+        decode_value_list,
+        |cql_values| {
             session
+                .0
                 .execute_single_page(&prepared.0, cql_values, paging_state)
                 .await
         },
@@ -340,16 +379,14 @@ fn s_query<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     query: ScyllaQuery,
-    values: Vec<Term<'a>>,
+    values: Term<'a>,
 ) -> NifResult<Atom> {
-    let cql_values = decode_values(values)?;
-    async_elixir!(
+    async_elixir_decoded!(
         env,
         opaque,
-        {
-            let session: &Session = &session.0;
-            session.query_unpaged(query, cql_values).await
-        },
+        values,
+        decode_value_list,
+        |cql_values| session.0.query_unpaged(query, cql_values).await,
         |env, res| {
             match res {
                 Ok(qr) => ScyllaResult::Ok(ScyllaQueryResult::new(env, qr)),
@@ -368,19 +405,20 @@ fn s_query_paged<'a>(
     opaque: Term<'a>,
     session: ResourceArc<SessionResource>,
     query: ScyllaQuery,
-    values: Vec<Term<'a>>,
+    values: Term<'a>,
     paging_state: Option<ScyllaPageState>,
 ) -> NifResult<Atom> {
-    let cql_values = decode_values(values)?;
     let paging_state = paging_state
         .map(|s| s.0)
         .unwrap_or(scylla::response::PagingState::start());
-    async_elixir!(
+    async_elixir_decoded!(
         env,
         opaque,
-        {
-            let session: &Session = &session.0;
+        values,
+        decode_value_list,
+        |cql_values| {
             session
+                .0
                 .query_single_page(query, cql_values, paging_state)
                 .await
         },

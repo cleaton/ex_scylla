@@ -9,14 +9,14 @@ defmodule ExScylla.TestSupport do
     end
 
     container_config =
-      Testcontainers.Container.new("scylladb/scylla:2026.2")
+      Testcontainers.Container.new("scylladb/scylla:2026.3")
       |> Testcontainers.Container.with_exposed_port(9042)
       |> Testcontainers.Container.with_cmd([
         "--disable-version-check",
         "--skip-wait-for-gossip-to-settle",
         "1",
         "--smp",
-        "1",
+        System.get_env("EX_SCYLLA_TEST_SMP", "1"),
         "--developer-mode",
         "1"
       ])

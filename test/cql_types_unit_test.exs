@@ -78,6 +78,31 @@ defmodule ExScylla.CqlTypesUnitTest do
     end
   end
 
+  describe "empty (zero-length) values" do
+    test "decode to nil for fixed-size and structured types" do
+      for type <- [
+            :int,
+            :big_int,
+            :boolean,
+            :double,
+            :uuid,
+            :timestamp,
+            :varint,
+            :decimal,
+            :inet,
+            :duration,
+            {:list, :int},
+            {:map, :text, :int}
+          ] do
+        assert CqlTypes.decode_value(<<>>, type) == nil, inspect(type)
+      end
+    end
+
+    test "stay empty binaries for text, ascii and blob" do
+      for type <- [:text, :ascii, :blob], do: assert(CqlTypes.decode_value(<<>>, type) == "")
+    end
+  end
+
   describe "uuid and timeuuid" do
     test ":uuid" do
       uuid_bytes =
@@ -334,6 +359,19 @@ defmodule ExScylla.CqlTypesUnitTest do
     test "returns raw binary unchanged for unrecognized types" do
       assert CqlTypes.decode_value(<<1, 2, 3, 4>>, :unknown_type) == <<1, 2, 3, 4>>
       assert CqlTypes.decode_value("custom_payload", {:custom, 42}) == "custom_payload"
+    end
+  end
+
+  describe ":duration" do
+    # Each component is a zigzag-encoded vint. CQL allows negative durations (all
+    # components share one sign), so this covers the sign handling of the decoder.
+    test "decodes single- and multi-byte vints, positive and negative" do
+      assert CqlTypes.decode_value(<<0x1C, 0x06, 0x00>>, :duration) ==
+               %ExScylla.Types.CqlDuration{months: 14, days: 3, nanoseconds: 0}
+
+      # -3 -> 5, -40 -> 79, -5000 -> 9999 (two-byte vint 0xA7 0x0F)
+      assert CqlTypes.decode_value(<<0x05, 0x4F, 0xA7, 0x0F>>, :duration) ==
+               %ExScylla.Types.CqlDuration{months: -3, days: -40, nanoseconds: -5000}
     end
   end
 end

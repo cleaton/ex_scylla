@@ -13,8 +13,11 @@ pub mod utils;
 // Setup
 rustler::init!("Elixir.ExScylla.Native", load = load);
 
-fn load(env: rustler::Env, _: rustler::Term) -> bool {
-    runtime::init();
+// `load_info` is `ExScylla.NativeConfig.load_data/0`: the configured Tokio worker
+// thread count, or `nil` for Tokio's default (one per CPU core).
+fn load(env: rustler::Env, load_info: rustler::Term) -> bool {
+    let worker_threads: Option<usize> = load_info.decode().ok().flatten();
+    runtime::init(worker_threads);
     let _ = env.register::<session_builder::types::SessionBuilderResource>();
     let _ = env.register::<session::types::SessionResource>();
     let _ = env.register::<session::types::ScyllaRawRowsResource>();

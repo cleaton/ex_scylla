@@ -8,10 +8,10 @@ use rustler::{
     NifUntaggedEnum, ResourceArc, Term,
 };
 use scylla::client::session::Session;
+use scylla::frame::response::result::{CollectionType, ColumnSpec, ColumnType, NativeType};
 use scylla::response::query_result::QueryResult;
 use scylla::statement::unprepared::Statement as Query;
 use scylla::value::{Counter, CqlDuration, CqlValue};
-use scylla_cql::frame::response::result::{CollectionType, ColumnSpec, ColumnType, NativeType};
 use std::str::FromStr;
 
 #[derive(NifStruct, Debug)]
@@ -280,7 +280,11 @@ impl std::convert::TryFrom<CqlValue> for ScyllaValue {
             CqlValue::Counter(counter) => ScyllaValue::Counter(counter.0),
             CqlValue::Decimal(decimal) => {
                 let (bi, scale) = decimal.into_signed_be_bytes_and_exponent();
-                let bd = BigDecimal::from((BigInt::from_signed_bytes_be(&bi), scale as i64));
+                // bigdecimal 0.4 is built on num-bigint 0.4, so use its re-export here.
+                let bd = BigDecimal::from((
+                    bigdecimal::num_bigint::BigInt::from_signed_bytes_be(&bi),
+                    scale as i64,
+                ));
                 ScyllaValue::Decimal(bd.to_string())
             }
             CqlValue::Date(date) => ScyllaValue::Date(date.0),
@@ -357,24 +361,30 @@ impl std::convert::TryFrom<CqlValue> for ScyllaValue {
     }
 }
 
-impl From<ScyllaValue> for CqlValue {
-    fn from(val: ScyllaValue) -> Self {
-        match val {
+// Elixir -> CQL conversion. Malformed decimal/varint strings and UUIDs fail with a
+// message that the NIFs return as `{:error, {:parse_value, msg}}`.
+impl TryFrom<ScyllaValue> for CqlValue {
+    type Error = String;
+
+    fn try_from(val: ScyllaValue) -> Result<Self, Self::Error> {
+        Ok(match val {
             ScyllaValue::Ascii(s) => CqlValue::Ascii(s),
             ScyllaValue::Boolean(b) => CqlValue::Boolean(b),
             ScyllaValue::Blob(b) => CqlValue::Blob(b.0),
             ScyllaValue::Counter(c) => CqlValue::Counter(Counter(c)),
-            ScyllaValue::Decimal(decimal) => BigDecimal::from_str(&decimal)
-                .map(|bd| {
-                    let (bi, scale) = bd.into_bigint_and_exponent();
-                    CqlValue::Decimal(
-                        scylla::value::CqlDecimal::from_signed_be_bytes_and_exponent(
-                            bi.to_signed_bytes_be(),
-                            scale as i32,
-                        ),
-                    )
-                })
-                .unwrap_or(CqlValue::Empty),
+            ScyllaValue::Decimal(decimal) => {
+                let bd = BigDecimal::from_str(&decimal)
+                    .map_err(|_| format!("invalid decimal: {:?}", decimal))?;
+                let (bi, scale) = bd.into_bigint_and_exponent();
+                let scale = i32::try_from(scale)
+                    .map_err(|_| format!("decimal scale out of range: {:?}", decimal))?;
+                CqlValue::Decimal(
+                    scylla::value::CqlDecimal::from_signed_be_bytes_and_exponent(
+                        bi.to_signed_bytes_be(),
+                        scale,
+                    ),
+                )
+            }
             ScyllaValue::Date(u32) => CqlValue::Date(scylla::value::CqlDate(u32)),
             ScyllaValue::Double(f64) => CqlValue::Double(f64),
             ScyllaValue::Duration(cd) => CqlValue::Duration(CqlDuration {
@@ -399,24 +409,27 @@ impl From<ScyllaValue> for CqlValue {
                 };
                 CqlValue::Inet(ip)
             }
-            ScyllaValue::List(v) => {
-                let values = v.into_iter().map(|sv| sv.into()).collect();
-                CqlValue::List(values)
-            }
-            ScyllaValue::Map(v) => {
-                let values = v.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
-                CqlValue::Map(values)
-            }
-            ScyllaValue::Set(v) => {
-                let values = v.into_iter().map(|sv| sv.into()).collect();
-                CqlValue::Set(values)
-            }
+            ScyllaValue::List(v) => CqlValue::List(
+                v.into_iter()
+                    .map(CqlValue::try_from)
+                    .collect::<Result<_, _>>()?,
+            ),
+            ScyllaValue::Map(v) => CqlValue::Map(
+                v.into_iter()
+                    .map(|(k, v)| Ok((CqlValue::try_from(k)?, CqlValue::try_from(v)?)))
+                    .collect::<Result<_, String>>()?,
+            ),
+            ScyllaValue::Set(v) => CqlValue::Set(
+                v.into_iter()
+                    .map(CqlValue::try_from)
+                    .collect::<Result<_, _>>()?,
+            ),
             ScyllaValue::UserDefinedType(sudt) => {
                 let fields = sudt
                     .fields
                     .into_iter()
-                    .map(|(t, v)| (t, v.map(|v| v.into())))
-                    .collect();
+                    .map(|(t, v)| Ok((t, v.map(CqlValue::try_from).transpose()?)))
+                    .collect::<Result<_, String>>()?;
                 CqlValue::UserDefinedType {
                     keyspace: sudt.keyspace,
                     name: sudt.type_name,
@@ -426,36 +439,35 @@ impl From<ScyllaValue> for CqlValue {
             ScyllaValue::SmallInt(i16) => CqlValue::SmallInt(i16),
             ScyllaValue::TinyInt(i8) => CqlValue::TinyInt(i8),
             ScyllaValue::Time(u64) => CqlValue::Time(scylla::value::CqlTime(u64 as i64)),
-            ScyllaValue::Timeuuid(u) => {
-                if u.0.len() == 16 {
-                    let mut slice: [u8; 16] = Default::default();
-                    slice.copy_from_slice(u.0.as_slice());
-                    CqlValue::Timeuuid(uuid::Uuid::from_bytes(slice).into())
-                } else {
-                    CqlValue::Empty
-                }
+            ScyllaValue::Timeuuid(u) => CqlValue::Timeuuid(parse_uuid(&u.0, "timeuuid")?.into()),
+            ScyllaValue::Tuple(v) => CqlValue::Tuple(
+                v.into_iter()
+                    .map(|sv| sv.map(CqlValue::try_from).transpose())
+                    .collect::<Result<_, _>>()?,
+            ),
+            ScyllaValue::Uuid(u) => CqlValue::Uuid(parse_uuid(&u.0, "uuid")?),
+            ScyllaValue::Varint(varint) => {
+                let bi = BigInt::from_str(&varint)
+                    .map_err(|_| format!("invalid varint: {:?}", varint))?;
+                CqlValue::Varint(scylla::value::CqlVarint::from_signed_bytes_be(
+                    bi.to_signed_bytes_be(),
+                ))
             }
-            ScyllaValue::Tuple(v) => {
-                let values = v.into_iter().map(|sv| sv.map(|sv| sv.into())).collect();
-                CqlValue::Tuple(values)
-            }
-            ScyllaValue::Uuid(u) => {
-                if u.0.len() == 16 {
-                    let mut slice: [u8; 16] = Default::default();
-                    slice.copy_from_slice(u.0.as_slice());
-                    CqlValue::Uuid(uuid::Uuid::from_bytes(slice))
-                } else {
-                    CqlValue::Empty
-                }
-            }
-            ScyllaValue::Varint(varint) => BigInt::from_str(&varint)
-                .map(|bi| {
-                    CqlValue::Varint(scylla::value::CqlVarint::from_signed_bytes_be(
-                        bi.to_signed_bytes_be(),
-                    ))
-                })
-                .unwrap_or(CqlValue::Empty),
-        }
+        })
+    }
+}
+
+// Accepts a 16-byte binary or a textual UUID (hyphenated, simple, braced or urn form).
+fn parse_uuid(bytes: &[u8], kind: &str) -> Result<uuid::Uuid, String> {
+    match <[u8; 16]>::try_from(bytes) {
+        Ok(raw) => Ok(uuid::Uuid::from_bytes(raw)),
+        Err(_) => uuid::Uuid::try_parse_ascii(bytes).map_err(|_| {
+            format!(
+                "invalid {}: expected a 16-byte binary or a UUID string, got {:?}",
+                kind,
+                String::from_utf8_lossy(bytes)
+            )
+        }),
     }
 }
 
@@ -726,7 +738,7 @@ impl From<ColumnType<'_>> for ScyllaColumnType {
 }
 
 fn scylla_udt_from_def(
-    definition: &scylla_cql::frame::response::result::UserDefinedType,
+    definition: &scylla::frame::response::result::UserDefinedType,
 ) -> ScyllaColumnType {
     ScyllaColumnType::UserDefinedType(ScyllaUserDefinedColumnType {
         type_name: definition.name.to_string(),

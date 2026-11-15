@@ -2,11 +2,19 @@ defmodule ExScylla.Native do
   use Rustler,
     otp_app: :ex_scylla,
     crate: "ex_scylla",
+    load_data_fun: {ExScylla.NativeConfig, :load_data},
     env:
       if(Mix.env() == :test,
         do: [
           {"LLVM_PROFILE_FILE", "/tmp/instrument_coverage.profraw"},
-          {"RUSTFLAGS", "-C instrument-coverage --cfg scylla_unstable"}
+          # An env RUSTFLAGS replaces .cargo/config.toml rustflags, so re-add the
+          # macOS link args that file would otherwise provide.
+          {"RUSTFLAGS",
+           "-C instrument-coverage --cfg scylla_unstable" <>
+             if(match?({:unix, :darwin}, :os.type()),
+               do: " -C link-arg=-undefined -C link-arg=dynamic_lookup",
+               else: ""
+             )}
         ],
         else: []
       )

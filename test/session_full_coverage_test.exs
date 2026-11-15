@@ -324,9 +324,36 @@ defmodule SessionFullCoverageTest do
       assert Session.get_keyspace(fresh_session) == "test"
     end
 
-    test "use_keyspace with non-existent keyspace returns error", %{session: session} do
+    # Since scylla driver 1.10, a failed USE removes the pool's connections and the
+    # session keeps the bad keyspace name, so the session stays unusable until a
+    # later use_keyspace succeeds. Use a dedicated session so the shared one is unaffected.
+    test "use_keyspace with non-existent keyspace returns error and can recover" do
+      node = Application.get_env(:ex_scylla, :test_node)
+
+      {:ok, fresh_session} =
+        SessionBuilder.new()
+        |> SessionBuilder.known_node(node)
+        |> SessionBuilder.build()
+
       assert {:error, _reason} =
-               Session.use_keyspace(session, "non_existent_keyspace_99999", false)
+               Session.use_keyspace(fresh_session, "non_existent_keyspace_99999", false)
+
+      assert :ok = Session.use_keyspace(fresh_session, "session_full_cov_ks", false)
+
+      # The pool refills in the background (about 100 ms locally), so poll for up to 5 s.
+      result =
+        Enum.reduce_while(1..50, nil, fn _, _ ->
+          case Session.query(fresh_session, "SELECT id FROM test_stream LIMIT 1;", []) do
+            {:ok, _} = ok ->
+              {:halt, ok}
+
+            err ->
+              Process.sleep(100)
+              {:cont, err}
+          end
+        end)
+
+      assert {:ok, %QueryResult{}} = result
     end
   end
 
@@ -400,6 +427,59 @@ defmodule SessionFullCoverageTest do
   end
 
   describe "error cases" do
+    test "driver errors map to specific tags instead of :io_error", %{session: session} do
+      {:ok, ps} = Session.prepare(session, "SELECT id, val FROM test_stream WHERE id = ?;")
+
+      assert {:error, {:bad_query, {:serialize_values_error, {:parse_error, _}}}} =
+               Session.execute(session, ps, [])
+
+      assert {:error, {:bad_query, {:serialize_values_error, {:parse_error, _}}}} =
+               Session.execute(session, ps, [{:text, "not an int"}])
+
+      assert {:error, {:serialization_error, _}} = Prepared.compute_partition_key(ps, [])
+
+      assert {:error, {:db_error, {:syntax_error, _}}} = Session.query(session, "SELEC x", [])
+    end
+
+    test "malformed bound values return {:error, {:parse_value, _}} instead of raising", %{
+      session: session
+    } do
+      {:ok, ps} = Session.prepare(session, "SELECT id, val FROM test_stream WHERE id = ?;")
+
+      assert {:error, {:parse_value, _}} = Session.execute(session, ps, [{:no_such_type, 1}])
+      assert {:error, {:parse_value, _}} = Session.query(session, "SELECT 1", [:not_a_value])
+
+      batch = Batch.new_with_statements(:unlogged, [ps])
+      assert {:error, {:parse_value, _}} = Session.batch(session, batch, [[{:no_such_type, 1}]])
+    end
+
+    test "malformed uuid, varint and decimal values return {:error, {:parse_value, _}}", %{
+      session: session
+    } do
+      {:ok, ps} = Session.prepare(session, "SELECT id, val FROM test_stream WHERE id = ?;")
+
+      for bad <- [
+            {:uuid, <<1, 2, 3>>},
+            {:uuid, "not-a-uuid"},
+            {:timeuuid, "123e4567-e89b-12d3-a456-42661417400"},
+            {:varint, "12x"},
+            {:decimal, "1.2.3"},
+            {:list, [{:int, 1}, {:uuid, "bad"}]},
+            {:map, [{{:text, "k"}, {:varint, "nope"}}]}
+          ] do
+        assert {:error, {:parse_value, msg}} = Session.execute(session, ps, [bad])
+        assert is_binary(msg)
+        assert {:error, {:parse_value, _}} = Session.query(session, "SELECT 1", [bad])
+      end
+
+      batch = Batch.new_with_statements(:unlogged, [ps])
+
+      assert {:error, {:parse_value, "invalid uuid" <> _}} =
+               Session.batch(session, batch, [[{:uuid, <<1, 2, 3>>}]])
+
+      assert {:error, {:parse_value, _}} = Prepared.compute_partition_key(ps, [{:varint, "x"}])
+    end
+
     test "invalid query syntax returns error", %{session: session} do
       assert {:error, _reason} = Session.query(session, "SELECT * FROM ;", [])
     end

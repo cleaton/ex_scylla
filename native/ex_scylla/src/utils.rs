@@ -87,6 +87,37 @@ macro_rules! async_elixir {
     };
 }
 
+// Like `async_elixir!`, but also copies `$args` into the owned env and decodes it
+// with `$decode` on the Tokio worker instead of the BEAM scheduler. A decode error
+// (anything that encodes, e.g. `{:error, {:parse_value, msg}}`) is sent as the reply.
+macro_rules! async_elixir_decoded {
+    ($env:ident, $opaque:expr, $args:expr, $decode:expr, |$decoded:ident| $e:expr, |$env_ident:ident, $res_ident:ident| $enc:expr) => {{
+        let pid = $env.pid();
+        let mut owned_env = OwnedEnv::new();
+        let (opaque, args) = owned_env.run(|oenv| {
+            (
+                owned_env.save($opaque.in_env(oenv)),
+                owned_env.save($args.in_env(oenv)),
+            )
+        });
+        drop(runtime::rt().spawn(async move {
+            let decoded = owned_env.run(|oenv| $decode(args.load(oenv)));
+            let res = match decoded {
+                Ok($decoded) => Ok($e),
+                Err(err) => Err(err),
+            };
+            owned_env.send_and_clear(&pid, |$env_ident| {
+                let reply = match res {
+                    Ok($res_ident) => ($enc).encode($env_ident),
+                    Err(err) => err.encode($env_ident),
+                };
+                (opaque.load($env_ident), reply).encode($env_ident)
+            });
+        }));
+        NifResult::<()>::Ok(())
+    }};
+}
+
 macro_rules! to_elixir {
     ($from:ty, $to:ty, $e:expr) => {
         impl ToElixir<$to> for $from {
@@ -120,5 +151,6 @@ macro_rules! clone_enum {
 }
 
 pub(crate) use async_elixir;
+pub(crate) use async_elixir_decoded;
 pub(crate) use clone_enum;
 pub(crate) use to_elixir;

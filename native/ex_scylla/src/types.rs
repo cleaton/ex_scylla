@@ -1,8 +1,8 @@
 use crate::utils::*;
 use rustler::NifUnitEnum;
+use scylla::frame::Compression;
 use scylla::statement::Consistency;
 use scylla::statement::SerialConsistency;
-use scylla_cql::frame::Compression;
 
 clone_enum!(Consistency, ScyllaConsistency, {
     Any,
