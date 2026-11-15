@@ -1,6 +1,8 @@
 # Release Process Guide
 
 This guide details the step-by-step procedure for releasing a new version of ExScylla.
+Run `mix` through `mise exec --` (or an activated mise shell) so the pinned
+Erlang/Elixir versions are used.
 
 ---
 
@@ -38,7 +40,7 @@ Ensure the version string matches across all project metadata files:
    def project do
      [
        app: :ex_scylla,
-       version: "0.10.2",
+       version: "X.Y.Z",
        ...
      ]
    end
@@ -48,14 +50,14 @@ Ensure the version string matches across all project metadata files:
    ```toml
    [package]
    name = "ex_scylla"
-   version = "0.10.2"
+   version = "X.Y.Z"
    ```
 
 3. **[`README.md`](../README.md)**:
    ```elixir
    def deps do
      [
-       {:ex_scylla, "~> 0.10.2"}
+       {:ex_scylla, "~> X.Y.Z"}
      ]
    end
    ```
@@ -70,12 +72,12 @@ Ensure the version string matches across all project metadata files:
 1. **Commit version changes**:
    ```bash
    git add mix.exs native/ex_scylla/Cargo.toml native/ex_scylla/Cargo.lock README.md CHANGELOG.md
-   git commit -m "chore(release): release v0.10.2"
+   git commit -m "chore(release): release vX.Y.Z"
    ```
 
 2. **Create a signed Git tag**:
    ```bash
-   git tag -a v0.10.2 -m "Release v0.10.2"
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
    ```
 
 3. **Push commits and tags to remote**:
@@ -87,10 +89,16 @@ Ensure the version string matches across all project metadata files:
 
 ## 4. Publishing to Hex.pm
 
-1. **Validate package packaging and docs**:
+1. **Validate the package contents**:
    ```bash
-   mix hex.build
+   mix hex.build --unpack -o /tmp/ex_scylla_pkg
+   (cd /tmp/ex_scylla_pkg/native/ex_scylla && env -u RUSTFLAGS cargo build --release)
    ```
+   - The package is compiled from source on the user's machine, so it must build
+     on its own. It needs `native/ex_scylla/.cargo/config.toml` (passes
+     `--cfg scylla_unstable` to the `scylla` dependency) and `build.rs`.
+   - Run from outside the repository, so that cargo can't pick up the repo's own
+     `.cargo/config.toml`.
 
 2. **Publish the package to Hex**:
    ```bash
@@ -109,5 +117,5 @@ Ensure the version string matches across all project metadata files:
 2. Verify documentation generation on [HexDocs.pm/ex_scylla](https://hexdocs.pm/ex_scylla).
 3. Test installing the published dependency in a sample Elixir project:
    ```elixir
-   {:ex_scylla, "~> 0.10.2"}
+   {:ex_scylla, "~> X.Y.Z"}
    ```
