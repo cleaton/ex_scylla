@@ -15,6 +15,7 @@ ExScylla uses `mise` for managing language runtimes (Erlang, Elixir, Rust) and t
 - **Run ExUnit test suite**: `mise run test`
 - **Run tests with coverage**: `mise run test:coverage`
 - **Run benchmarks**: `mise run bench <name>` (e.g. `mise run bench query`, `mise run bench insert`)
+- **Smoke-test the published Hex package**: `mise run verify:published [version]` (see `examples/published_smoke/`)
 - **Start background ScyllaDB**: `mise run scylla:start`
 - **Stop background ScyllaDB**: `mise run scylla:stop`
 - **Foreground ScyllaDB container**: `mise run scylla:run`

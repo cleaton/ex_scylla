@@ -114,6 +114,36 @@ run = "cargo install grcov"
 description = "Run a benchmark (e.g. mise run bench query)"
 run = "mix bench $@"
 
+[tasks."verify:published"]
+description = "Install the published Hex package in a fresh project and smoke-test it against ScyllaDB (e.g. mise run verify:published 0.11.0)"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+version="${1:-$(sed -nE 's/^ *version: "([^"]+)".*/\1/p' mix.exs | head -1)}"
+work="$(mktemp -d)"
+started=""
+cleanup() {
+  [ -n "$started" ] && docker stop exscylla >/dev/null || true
+  rm -rf "$work"
+}
+trap cleanup EXIT
+
+if [ -z "${SCYLLA_NODE:-}" ] && ! (echo > /dev/tcp/127.0.0.1/9042) 2>/dev/null; then
+  echo "Starting ScyllaDB (mise run scylla:start)..."
+  mise run scylla:start >/dev/null
+  started=1
+fi
+
+# Build outside the repository, without RUSTFLAGS, like a user's project.
+cp -r examples/published_smoke/. "$work"
+cd "$work"
+rm -rf _build deps mix.lock
+echo "Verifying ex_scylla $version from Hex in $work"
+export EX_SCYLLA_VERSION="$version"
+env -u RUSTFLAGS mix deps.get
+env -u RUSTFLAGS mix run smoke.exs
+'''
+
 [tasks."scylla:run"]
 description = "Run standalone ScyllaDB container in foreground (replaces run_scylla.sh)"
 run = "docker run --net=host --name exscylla scylladb/scylla:2026.3 --developer-mode 1 --listen-address 127.0.0.1"
