@@ -115,7 +115,9 @@ Ensure the version string matches across all project metadata files:
 
 1. Verify package availability on [Hex.pm/packages/ex_scylla](https://hex.pm/packages/ex_scylla).
 2. Verify documentation generation on [HexDocs.pm/ex_scylla](https://hexdocs.pm/ex_scylla).
-3. Test installing the published dependency in a sample Elixir project:
-   ```elixir
-   {:ex_scylla, "~> X.Y.Z"}
+3. Install the published package in a fresh project and smoke-test it against ScyllaDB:
+   ```bash
+   mise run verify:published X.Y.Z
    ```
+   See [`examples/published_smoke`](../examples/published_smoke/README.md). It builds
+   outside the repository, so it catches files missing from the package.
